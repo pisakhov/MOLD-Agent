@@ -1,5 +1,7 @@
 # MOLD Agent - Modular Output Learning Design
 
+**Last Updated:** 2026-05-03
+
 ![MOLD Agent Architecture](graph.png)
 
 MOLD Agent is a next-generation AI agent framework that combines reasoning with structured output generation. It extends LangGraph's capabilities by introducing "molds" - schema tools that guide agents toward structured thinking and data organization.
