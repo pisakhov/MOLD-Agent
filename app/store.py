@@ -1,10 +1,26 @@
+import json
 import uuid
 
 from app.crypto import decrypt, encrypt
 from app.database import connect, get_config, row, rows, set_config
 
 
+def seed_codex_from_auth():
+    from app.codex import load_auth_tokens
+    tokens = load_auth_tokens()
+    if not tokens:
+        return None
+    with connect() as conn:
+        existing = conn.execute("SELECT id FROM providers WHERE provider_type = 'codex' LIMIT 1").fetchone()
+        if existing:
+            return existing["id"]
+    provider = create_provider("Codex (ChatGPT)", "codex", None, json.dumps(tokens))
+    create_model(provider["id"], "gpt-5.5", "gpt-5.5", enabled=True, is_default=True)
+    return provider["id"]
+
+
 def list_providers():
+    seed_codex_from_auth()
     with connect() as conn:
         return rows(conn.execute(
             "SELECT id, name, provider_type, base_url, enabled, created_at, updated_at FROM providers ORDER BY created_at"
@@ -17,6 +33,10 @@ def get_provider(provider_id: str):
 
 
 def create_provider(name: str, provider_type: str, base_url: str | None, api_key: str):
+    if provider_type == "codex":
+        from app.codex import normalize_tokens
+        api_key = json.dumps(normalize_tokens(api_key))
+        base_url = None
     provider_id = str(uuid.uuid4())
     with connect() as conn:
         conn.execute(
@@ -35,7 +55,13 @@ def get_provider_public(provider_id: str):
 
 
 def update_provider(provider_id: str, **kwargs):
+    if kwargs.get("provider_type") == "codex":
+        kwargs["base_url"] = None
     if "api_key" in kwargs:
+        provider_type = kwargs.get("provider_type") or (get_provider(provider_id) or {}).get("provider_type")
+        if provider_type == "codex":
+            from app.codex import normalize_tokens
+            kwargs["api_key"] = json.dumps(normalize_tokens(kwargs["api_key"]))
         kwargs["api_key_encrypted"] = encrypt(kwargs.pop("api_key"))
     if not kwargs:
         return get_provider_public(provider_id)
@@ -113,7 +139,7 @@ def get_model_with_key(id: str):
     with connect() as conn:
         item = row(conn.execute(
             """
-            SELECT m.model_id, p.provider_type, p.base_url, p.api_key_encrypted
+            SELECT m.model_id, p.provider_type, p.base_url, p.api_key_encrypted, p.id AS provider_id
             FROM models m JOIN providers p ON m.provider_id = p.id
             WHERE m.id = ? AND m.enabled = 1 AND p.enabled = 1
             """,

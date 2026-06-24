@@ -36,9 +36,10 @@
                     <option value="openai">OpenAI / compatible</option>
                     <option value="anthropic">Anthropic</option>
                     <option value="google">Google Gemini</option>
+                    <option value="codex">Codex (ChatGPT)</option>
                 </select>
-                <input name="base_url" placeholder="Base URL (optional)" class="px-3 py-2 rounded-lg border border-neutral-300 focus:border-neutral-900 focus:outline-none md:col-span-2">
-                <input name="api_key" type="password" placeholder="API key" required class="px-3 py-2 rounded-lg border border-neutral-300 focus:border-neutral-900 focus:outline-none md:col-span-2">
+                <input name="base_url" placeholder="Base URL (ignored for Codex)" class="px-3 py-2 rounded-lg border border-neutral-300 focus:border-neutral-900 focus:outline-none md:col-span-2">
+                <input name="api_key" type="password" placeholder="API key or Codex auth.json tokens" required class="px-3 py-2 rounded-lg border border-neutral-300 focus:border-neutral-900 focus:outline-none md:col-span-2">
                 <button type="submit" class="md:col-span-2 py-2 rounded-lg bg-neutral-900 text-white font-medium hover:bg-neutral-700 transition-colors">Save provider</button>
             </form>
         </details>

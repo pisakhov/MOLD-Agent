@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 import time
 from typing import Any, AsyncIterator, Iterator, List, Optional, Sequence
@@ -65,7 +66,13 @@ class FallbackChatModel(BaseChatModel):
             yield ChatGenerationChunk(message=chunk)
 
 
-def build_llm(provider_type: str, model_id: str, api_key: str, base_url: str | None = None, max_tokens: int | None = None, timeout: int | None = None, max_retries: int = 0):
+def build_llm(provider_type: str, model_id: str, api_key: str, base_url: str | None = None, max_tokens: int | None = None, timeout: int | None = None, max_retries: int = 0, provider_id: str | None = None):
+    if provider_type == "codex":
+        from app.codex import CodexChatModel, get_account_id, refresh_tokens
+        tokens, changed = refresh_tokens(json.loads(api_key))
+        if changed and provider_id:
+            store.update_provider(provider_id, api_key=json.dumps(tokens))
+        return CodexChatModel(model=model_id, access_token=tokens["access_token"], account_id=get_account_id(tokens["access_token"]), max_output_tokens=max_tokens)
     if provider_type == "anthropic":
         from langchain_anthropic import ChatAnthropic
         kwargs = dict(model=model_id, api_key=api_key, base_url=base_url, temperature=DEFAULT_TEMPERATURE, timeout=timeout or 60, max_retries=max_retries)
@@ -90,13 +97,13 @@ def build_chain_llm(max_tokens: int | None = None):
     for entry in store.get_chain():
         info = store.get_model_with_key(entry["model_id"])
         if info:
-            members.append(build_llm(info["provider_type"], info["model_id"], info["api_key"], info.get("base_url"), max_tokens=max_tokens, timeout=entry.get("timeout", 120)))
+            members.append(build_llm(info["provider_type"], info["model_id"], info["api_key"], info.get("base_url"), max_tokens=max_tokens, timeout=entry.get("timeout", 120), provider_id=info.get("provider_id")))
             retries.append(entry.get("retries", 1))
     if not members:
         defaults = [m for m in store.list_models() if m["enabled"] and m["is_default"]]
         for model in defaults[:1]:
             info = store.get_model_with_key(model["id"])
             if info:
-                members.append(build_llm(info["provider_type"], info["model_id"], info["api_key"], info.get("base_url"), max_tokens=max_tokens))
+                members.append(build_llm(info["provider_type"], info["model_id"], info["api_key"], info.get("base_url"), max_tokens=max_tokens, provider_id=info.get("provider_id")))
                 retries.append(1)
     return FallbackChatModel(members=members, retries=retries) if members else None

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOLD Agent — Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body { font-family: ui-sans-serif, -apple-system, "Segoe UI", sans-serif; }</style>
+</head>
+<body class="bg-white text-neutral-900 min-h-screen flex items-center justify-center p-6">
+    <main class="w-full max-w-sm border border-neutral-200 rounded-2xl p-6 shadow-sm">
+        <div class="mb-6">
+            <h1 class="text-xl font-semibold tracking-tight">MOLD Agent</h1>
+            <p class="text-sm text-neutral-500 mt-1">Enter the site password.</p>
+        </div>
+        {% if error %}<p class="text-sm text-red-600 mb-4">{{ error }}</p>{% endif %}
+        <form method="post" action="/login" class="space-y-3">
+            <input name="password" type="password" autofocus required placeholder="Password" class="w-full px-3 py-2 rounded-lg border border-neutral-300 focus:border-neutral-900 focus:outline-none">
+            <button class="w-full py-2 rounded-lg bg-neutral-900 text-white font-medium hover:bg-neutral-700 transition-colors">Sign in</button>
+        </form>
+    </main>
+</body>
+</html>

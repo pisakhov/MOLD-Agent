@@ -89,7 +89,10 @@ async def detect_models(provider_id: str):
     from app.crypto import decrypt
     api_key = decrypt(provider["api_key_encrypted"])
     try:
-        if provider["provider_type"] == "anthropic":
+        if provider["provider_type"] == "codex":
+            from app.codex import CODEX_MODELS
+            models = [{"id": model, "display_name": model} for model in CODEX_MODELS]
+        elif provider["provider_type"] == "anthropic":
             models = await asyncio.to_thread(fetch_anthropic_models, api_key, provider.get("base_url"))
         elif provider["provider_type"] == "google":
             models = await asyncio.to_thread(fetch_google_models, api_key)
@@ -161,7 +164,7 @@ async def test_model(model_id: str):
     info = store.get_model_with_key(model_id)
     if not info:
         raise HTTPException(status_code=404, detail="Model not found or disabled")
-    llm = build_llm(info["provider_type"], info["model_id"], info["api_key"], info.get("base_url"), max_tokens=16)
+    llm = build_llm(info["provider_type"], info["model_id"], info["api_key"], info.get("base_url"), max_tokens=16, provider_id=info.get("provider_id"))
     try:
         reply = await llm.ainvoke("Reply with the single word: pong")
     except Exception as exc:
