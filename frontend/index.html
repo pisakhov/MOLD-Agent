@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MOLD Agent</title>
+  <link rel="stylesheet" href="/global.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="/"><span class="logo"></span><span>MOLD Agent</span></a>
+      <div class="nav-links">
+        <a href="/evals">Evals</a>
+        <a href="/evals/dashboard">Dashboard</a>
+        <a href="/settings">Settings</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <span class="badge">schema tools for attention</span>
+      <h1>Less AI fatigue. More shaped attention.</h1>
+      <p>MOLD turns tool schemas into cognitive constraints. A/B test the same message against a simple no-tool agent and a mold-shaped agent.</p>
+    </section>
+
+    <main class="grid">
+      <section class="card">
+        <h2>A/B test</h2>
+        <div class="field">
+          <label>Message</label>
+          <textarea id="message" placeholder="Ask for something that usually creates AI bloat..."></textarea>
+        </div>
+        <div class="field">
+          <label>System prompt override</label>
+          <textarea id="system-prompt" placeholder="Optional. Leave blank to use the attention-respecting default." style="min-height: 96px"></textarea>
+        </div>
+        <div class="actions">
+          <button id="run" class="btn primary">Run A/B</button>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="card">
+          <div class="row" style="justify-content: space-between">
+            <h2 style="margin:0">Attention molds</h2>
+            <span id="model-status" class="badge">checking models…</span>
+          </div>
+          <div id="molds" class="stack" style="margin-top:14px"></div>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content: space-between">
+            <h2 style="margin:0">Result</h2>
+            <span class="badge">same message · same core prompt</span>
+          </div>
+          <div class="ab-grid" style="margin-top:14px">
+            <div class="ab-panel">
+              <div class="row" style="justify-content: space-between"><h3>A · Simple agent</h3><span class="badge">no tools</span></div>
+              <div id="simple-answer" class="output muted">Run A/B to see the baseline.</div>
+            </div>
+            <div class="ab-panel">
+              <div class="row" style="justify-content: space-between"><h3>B · Mold agent</h3><span class="badge">selected mold</span></div>
+              <div id="mold-answer" class="output muted">Run A/B to see the mold-shaped answer.</div>
+            </div>
+          </div>
+          <hr>
+          <h3>Mold state</h3>
+          <pre id="state" class="json">{}</pre>
+          <h3>Trace</h3>
+          <pre id="trace" class="json">[]</pre>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

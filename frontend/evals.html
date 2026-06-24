@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MOLD Eval Arena</title>
+  <link rel="stylesheet" href="/global.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="/"><span class="logo"></span><span>MOLD Eval Arena</span></a>
+      <div class="nav-links">
+        <a href="/">Lab</a>
+        <a href="/evals/dashboard">Dashboard</a>
+        <a href="/settings">Settings</a>
+      </div>
+    </nav>
+
+    <section class="hero compact">
+      <span class="badge">blind feedback · one at a time</span>
+      <h1>Give feedback while reading. Reveal after.</h1>
+      <p>The LLM scans each pair of outputs and asks case-specific questions about how they responded, including sentence-level annotations.</p>
+    </section>
+
+    <main class="eval-layout">
+      <section class="card stack">
+        <div class="row" style="justify-content: space-between">
+          <h2 style="margin:0">Batch</h2>
+          <span id="pending-count" class="badge">loading…</span>
+        </div>
+        <p class="muted">Generate one blind test at a time. Runs in the background, shows a timer, and can be stopped.</p>
+        <div class="actions">
+          <button id="stop-generation" class="btn danger hidden">Stop generation</button>
+          <button id="generate" class="btn primary">Generate blind test</button>
+        </div>
+        <div id="generate-status" class="muted"></div>
+      </section>
+
+      <section class="stack">
+        <div id="empty" class="card hidden">
+          <h2>No pending tests</h2>
+          <p class="muted">Generate a blind test to start voting.</p>
+        </div>
+
+        <div id="case-card" class="card hidden">
+          <div class="row" style="justify-content: space-between">
+            <h2 style="margin:0">Blind test</h2>
+            <div class="row">
+              <span id="vote-score" class="badge">0 / 0 answered</span>
+              <button id="skip-case" class="btn ghost">Skip test</button>
+              <button id="submit-vote" class="btn primary" disabled>Submit feedback</button>
+              <span id="case-id" class="badge"></span>
+            </div>
+          </div>
+          <div class="prompt-box">
+            <div><strong>System prompt</strong><p id="system-prompt" class="muted"></p></div>
+            <div><strong>User message</strong><p id="user-message"></p></div>
+          </div>
+
+          <div class="ab-grid" style="margin-top:14px">
+            <div class="ab-panel">
+              <div class="row" style="justify-content: space-between"><h3>Option A</h3><span class="badge">blind</span></div>
+              <div id="option-a" class="output"></div>
+            </div>
+            <div class="ab-panel">
+              <div class="row" style="justify-content: space-between"><h3>Option B</h3><span class="badge">blind</span></div>
+              <div id="option-b" class="output"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="reveal-card" class="card hidden">
+          <div class="row" style="justify-content: space-between">
+            <h2 style="margin:0">Reveal</h2>
+            <button id="next" class="btn">Next pending</button>
+          </div>
+          <div id="reveal" class="stack" style="margin-top:14px"></div>
+          <hr>
+          <h3>Mold state</h3>
+          <pre id="mold-state" class="json">{}</pre>
+          <h3>Mold trace</h3>
+          <pre id="mold-trace" class="json">[]</pre>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module" src="/static/evals.js"></script>
+</body>
+</html>

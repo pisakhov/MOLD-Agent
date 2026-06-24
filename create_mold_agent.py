@@ -93,7 +93,8 @@ def create_dynamic_mold_state(molds):
 class BasicToolNode:
     """A node that runs the tools requested in the last AIMessage"""
     
-    def __init__(self, tools: list) -> None:
+    def __init__(self, tools: list = None) -> None:
+        tools = tools or []
         self.tools_by_name = {tool.name: tool for tool in tools}
 
     def __call__(self, inputs: dict):
@@ -118,7 +119,8 @@ class BasicToolNode:
 class BasicMoldNode:
     """A node that executes mold tool calls"""
 
-    def __init__(self, mold_tools: list) -> None:
+    def __init__(self, mold_tools: list = None) -> None:
+        mold_tools = mold_tools or []
         self.mold_tools_by_name = {tool.name: tool for tool in mold_tools}
 
     def __call__(self, inputs: dict):
@@ -128,7 +130,13 @@ class BasicMoldNode:
 
         for tool_call in message.tool_calls:
             if tool_call["name"].endswith("_mold"):
-                tool_result = self.mold_tools_by_name[tool_call["name"]].invoke(tool_call)
+                mold_tool = self.mold_tools_by_name[tool_call["name"]]
+                if "tool_call_id" in getattr(mold_tool, "_injected_args_keys", ()):
+                    tool_result = mold_tool.invoke(tool_call)
+                else:
+                    mold_args = dict(tool_call.get("args", {}))
+                    mold_args.setdefault("tool_call_id", tool_call.get("id"))
+                    tool_result = mold_tool.invoke(mold_args)
 
                 # Handle Command return type
                 if isinstance(tool_result, Command):
@@ -168,6 +176,8 @@ def smart_route(state):
 
 def create_chatbot_node(model: Union[str, BaseChatModel], tools: list = None, molds: list = None, prompt: str = ""):
     """Create a configurable chatbot node"""
+    tools = tools or []
+    molds = molds or []
 
     async def chatbot(state) -> Dict[str, Any]:
         """🚀 Revolutionary MOLD Agent chatbot node with dynamic state compatibility"""
@@ -202,8 +212,11 @@ def create_mold_agent(
     global _DEBUG_MODE
     _DEBUG_MODE = debug
 
+    tools = tools or []
+    molds = molds or []
+
     # 🚀 Create dynamic state based on molds - REVOLUTIONARY!
-    DynamicMoldState = create_dynamic_mold_state(molds or [])
+    DynamicMoldState = create_dynamic_mold_state(molds)
     if _DEBUG_MODE:
         print(f"🚀 Created dynamic MoldState with fields: {list(DynamicMoldState.__annotations__.keys())}")
 

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MOLD Eval Dashboard</title>
+  <link rel="stylesheet" href="/global.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="/"><span class="logo"></span><span>MOLD Eval Dashboard</span></a>
+      <div class="nav-links">
+        <a href="/evals">Arena</a>
+        <a href="/">Lab</a>
+        <a href="/settings">Settings</a>
+        <a href="/api/evals/export" target="_blank">Export JSONL</a>
+      </div>
+    </nav>
+
+    <section class="hero compact">
+      <span class="badge">human feedback · hidden signal prediction</span>
+      <h1>What signals is the mold earning?</h1>
+      <p>Track generated feedback answers, net mold signal, and whether the hidden predictor is learning your signal pattern.</p>
+    </section>
+
+    <main class="stack">
+      <section class="stats-grid">
+        <div class="card metric"><span>Total cases</span><strong id="total">0</strong></div>
+        <div class="card metric"><span>Pending</span><strong id="pending">0</strong></div>
+        <div class="card metric"><span>Mold net signal</span><strong id="mold-rate">0</strong></div>
+        <div class="card metric"><span>Predictor accuracy</span><strong id="judge-rate">0%</strong></div>
+      </section>
+
+      <section class="card">
+        <h2>By mold</h2>
+        <div id="per-mold" class="stack"></div>
+      </section>
+
+      <section class="card">
+        <h2>Recent votes</h2>
+        <div id="recent" class="stack"></div>
+      </section>
+
+      <section class="card">
+        <div class="row" style="justify-content: space-between">
+          <div>
+            <h2 style="margin-bottom:6px">Eval data</h2>
+            <p class="muted" style="margin:0">Delete only feedback votes, or wipe generated samples, batches, cases, votes, and dashboard stats.</p>
+          </div>
+          <div class="row">
+            <button id="delete-votes" class="btn">Delete votes only</button>
+            <button id="delete-data" class="btn danger">Delete eval data</button>
+          </div>
+        </div>
+        <div id="delete-status" class="muted" style="margin-top:10px"></div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/static/evals_dashboard.js"></script>
+</body>
+</html>

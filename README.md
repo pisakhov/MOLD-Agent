@@ -120,3 +120,27 @@ Example:
 | Focus | Tool-centric | Schema + Tool centric |
 | Consistency | Variable | High (schema-enforced) |
 
+## Attention Lab UI
+
+This repo now includes a minimal FastAPI UI for experimenting with attention-shaped molds.
+
+```bash
+uv sync
+uv run uvicorn main:app --reload --port 8080
+```
+
+Open:
+
+- `/` — MOLD Lab for running attention molds
+- `/settings` — provider/model settings and fallback chain
+
+The settings flow is inspired by the Disagreement-of-Thought lab and Alex model manager: add a provider, detect/select models, test a model, then save a short ordered fallback chain. API keys are encrypted with `SECRET_KEY`; if none is set, a local `.data/secret_key` is created for dev. Codex uses the same Alex/DoT-style auth: use Settings → Connect Codex for the PKCE login flow, or auto-seed from `~/.codex/auth.json`, `CODEX_AUTH_JSON`, or `CODEX_AUTH_JSON_B64`; the Codex provider field also accepts the full auth JSON/tokens JSON. The `/evals` arena generates one blind A/B test at a time in a stoppable background job, has an LLM scan the actual outputs and create short diagnostic point checks, hides signal predictions until after feedback, and tracks performance on `/evals/dashboard`.
+
+Docker/Dokploy entrypoint:
+
+```bash
+docker compose up --build
+```
+
+Set `MOLD_PASSWORD` and `SECRET_KEY` in production, and keep `/data` mounted for SQLite state.
+
