@@ -1,0 +1,13 @@
+services:
+  mold-agent:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - mold_agent_data:/data
+    restart: unless-stopped
+
+volumes:
+  mold_agent_data:

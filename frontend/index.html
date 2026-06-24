@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MOLD Agent</title>
+  <link rel="stylesheet" href="/global.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="/"><span class="logo"></span><span>MOLD Agent</span></a>
+      <div class="nav-links">
+        <a href="/settings">Settings</a>
+        <a href="https://github.com/pisakhov/MOLD-Agent" target="_blank">GitHub</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <span class="badge">schema tools for attention</span>
+      <h1>Less AI fatigue. More shaped attention.</h1>
+      <p>MOLD turns tool schemas into cognitive constraints. Pick an attention mold, ask anything, and watch the agent call the mold before answering.</p>
+    </section>
+
+    <main class="grid">
+      <section class="card">
+        <h2>Run a mold</h2>
+        <div class="field">
+          <label>Message</label>
+          <textarea id="message" placeholder="Ask for something that usually creates AI bloat..."></textarea>
+        </div>
+        <div class="field">
+          <label>System prompt override</label>
+          <textarea id="system-prompt" placeholder="Optional. Leave blank to use the attention-respecting default." style="min-height: 96px"></textarea>
+        </div>
+        <div class="actions">
+          <button id="run" class="btn primary">Run</button>
+        </div>
+      </section>
+
+      <section class="stack">
+        <div class="card">
+          <div class="row" style="justify-content: space-between">
+            <h2 style="margin:0">Attention molds</h2>
+            <span id="model-status" class="badge">checking models…</span>
+          </div>
+          <div id="molds" class="stack" style="margin-top:14px"></div>
+        </div>
+
+        <div class="card">
+          <h2>Final answer</h2>
+          <div id="answer" class="output muted">Run the agent to see the answer.</div>
+          <hr>
+          <h3>Mold state</h3>
+          <pre id="state" class="json">{}</pre>
+          <h3>Trace</h3>
+          <pre id="trace" class="json">[]</pre>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
