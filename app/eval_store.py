@@ -103,6 +103,17 @@ def clear_eval_data():
         conn.execute("DELETE FROM eval_samples")
 
 
+def clear_eval_votes():
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE eval_cases
+            SET human_winner = NULL, criteria_votes_json = NULL, voted_at = NULL
+            WHERE human_winner IS NOT NULL OR criteria_votes_json IS NOT NULL OR voted_at IS NOT NULL
+            """
+        )
+
+
 def create_case(data: dict[str, Any]):
     id = newid()
     payload = {
@@ -147,6 +158,11 @@ def create_case(data: dict[str, Any]):
 def get_case(id: str):
     with connect() as conn:
         return row(conn.execute("SELECT * FROM eval_cases WHERE id = ?", (id,)).fetchone())
+
+
+def delete_case(id: str):
+    with connect() as conn:
+        conn.execute("DELETE FROM eval_cases WHERE id = ?", (id,))
 
 
 def list_cases(pending: bool | None = None, limit: int = 50):

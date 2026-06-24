@@ -27,6 +27,21 @@ function winningKind(item) {
   return item.human_winner === 'A' ? item.option_a_kind : item.option_b_kind;
 }
 
+async function deleteEvalVotes() {
+  if (!confirm('Delete feedback votes only? Generated cases will stay and become pending again.')) return;
+  $('delete-votes').disabled = true;
+  $('delete-status').textContent = 'Deleting votes…';
+  try {
+    await api('/api/evals/votes', { method: 'DELETE' });
+    $('delete-status').textContent = 'Votes deleted. Generated cases are pending again.';
+    await load();
+  } catch (err) {
+    $('delete-status').textContent = err.message;
+  } finally {
+    $('delete-votes').disabled = false;
+  }
+}
+
 async function deleteEvalData() {
   if (!confirm('Delete all eval data? This removes generated cases, feedback votes, samples, and dashboard stats.')) return;
   if (!confirm('Really delete all eval data? This cannot be undone.')) return;
@@ -77,6 +92,7 @@ async function load() {
   `).join('') : '<p class="muted">No recent feedback.</p>';
 }
 
+$('delete-votes').addEventListener('click', deleteEvalVotes);
 $('delete-data').addEventListener('click', deleteEvalData);
 
 load().catch(err => { document.body.innerHTML = `<pre>${esc(err.message)}</pre>`; });

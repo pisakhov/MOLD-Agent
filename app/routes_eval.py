@@ -501,6 +501,17 @@ def list_eval_cases(pending: bool | None = None):
     return {"cases": [public_case(case, reveal=True) for case in eval_store.list_cases(pending=pending)]}
 
 
+@router.delete("/cases/{case_id}")
+def skip_case(case_id: str):
+    case = eval_store.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Eval case not found")
+    if case.get("human_winner"):
+        raise HTTPException(status_code=409, detail="Only pending blind tests can be skipped here")
+    eval_store.delete_case(case_id)
+    return {"case": public_case(eval_store.next_case()), "stats": eval_stats()}
+
+
 @router.post("/cases/{case_id}/vote")
 def vote(case_id: str, body: VoteBody):
     case = eval_store.get_case(case_id)
@@ -584,6 +595,12 @@ def feedback_signal_stats():
             bucket["simple_signal_avg"] = bucket["simple_signal_score"] / bucket["signal_cases"]
             bucket["mold_signal_delta"] = bucket["mold_signal_avg"] - bucket["simple_signal_avg"]
     return {"summary": summary, "per_mold": per_mold}
+
+
+@router.delete("/votes")
+def delete_eval_votes():
+    eval_store.clear_eval_votes()
+    return eval_stats()
 
 
 @router.delete("/data")

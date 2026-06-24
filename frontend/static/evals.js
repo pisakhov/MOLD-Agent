@@ -213,6 +213,7 @@ function updateVoteProgress() {
   const count = items.filter(item => state.votes[item.id]).length;
   $('vote-score').textContent = `${count} / ${items.length} answered`;
   $('submit-vote').disabled = Boolean(state.case?.voted) || !items.length || count !== items.length;
+  $('skip-case').disabled = !state.case || Boolean(state.case?.voted);
 }
 
 function resetVote() {
@@ -303,6 +304,21 @@ async function submitVote() {
   }
 }
 
+async function skipCase() {
+  if (!state.case || state.case.voted) return;
+  if (!confirm('Skip and delete this blind test?')) return;
+  $('skip-case').disabled = true;
+  try {
+    await api(`/api/evals/cases/${state.case.id}`, { method: 'DELETE' });
+    state.case = null;
+    state.votes = {};
+    await loadNext();
+  } catch (err) {
+    alert(err.message);
+    updateVoteProgress();
+  }
+}
+
 function stopBatchPolling() {
   if (state.batchPoll) clearInterval(state.batchPoll);
   state.batchPoll = null;
@@ -383,6 +399,7 @@ async function generateBatch() {
 }
 
 $('generate').addEventListener('click', generateBatch);
+$('skip-case').addEventListener('click', skipCase);
 $('submit-vote').addEventListener('click', submitVote);
 $('next').addEventListener('click', loadNext);
 
