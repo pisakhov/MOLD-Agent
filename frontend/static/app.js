@@ -25,14 +25,37 @@ async function loadStatus() {
   $('model-status').textContent = active ? 'model ready' : 'configure model first';
 }
 
+function setRunning(on) {
+  $('run').disabled = on;
+  $('run').textContent = on ? 'Running A/B…' : 'Run A/B';
+}
+
+function showPending() {
+  for (const id of ['simple-answer', 'mold-answer']) {
+    $(id).classList.add('muted');
+    $(id).textContent = 'Thinking…';
+  }
+  $('state').textContent = '{}';
+  $('trace').textContent = '[]';
+}
+
+function showArm(id, arm) {
+  const el = $(id);
+  if (arm?.error) {
+    el.classList.add('muted');
+    el.textContent = arm.error;
+    return;
+  }
+  el.classList.remove('muted');
+  el.textContent = arm?.answer || '(no final answer)';
+}
+
 async function run() {
   const mold = document.querySelector('input[name="mold"]:checked')?.value;
-  $('run').disabled = true;
-  $('run').textContent = 'Running…';
-  $('answer').classList.add('muted');
-  $('answer').textContent = 'Thinking through the mold…';
+  setRunning(true);
+  showPending();
   try {
-    const result = await api('/api/run', {
+    const result = await api('/api/compare', {
       method: 'POST',
       body: JSON.stringify({
         message: $('message').value,
@@ -40,15 +63,15 @@ async function run() {
         system_prompt: $('system-prompt').value || null,
       }),
     });
-    $('answer').classList.remove('muted');
-    $('answer').textContent = result.answer || '(no final answer)';
-    $('state').textContent = JSON.stringify(result.mold_state, null, 2);
-    $('trace').textContent = JSON.stringify(result.trace, null, 2);
+    showArm('simple-answer', result.simple);
+    showArm('mold-answer', result.mold);
+    $('state').textContent = JSON.stringify(result.mold?.mold_state || {}, null, 2);
+    $('trace').textContent = JSON.stringify(result.mold?.trace || [], null, 2);
   } catch (err) {
-    $('answer').textContent = err.message;
+    $('simple-answer').textContent = err.message;
+    $('mold-answer').textContent = err.message;
   } finally {
-    $('run').disabled = false;
-    $('run').textContent = 'Run';
+    setRunning(false);
   }
 }
 

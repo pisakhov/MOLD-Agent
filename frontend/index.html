@@ -19,12 +19,12 @@
     <section class="hero">
       <span class="badge">schema tools for attention</span>
       <h1>Less AI fatigue. More shaped attention.</h1>
-      <p>MOLD turns tool schemas into cognitive constraints. Pick an attention mold, ask anything, and watch the agent call the mold before answering.</p>
+      <p>MOLD turns tool schemas into cognitive constraints. A/B test the same message against a simple no-tool agent and a mold-shaped agent.</p>
     </section>
 
     <main class="grid">
       <section class="card">
-        <h2>Run a mold</h2>
+        <h2>A/B test</h2>
         <div class="field">
           <label>Message</label>
           <textarea id="message" placeholder="Ask for something that usually creates AI bloat..."></textarea>
@@ -34,7 +34,7 @@
           <textarea id="system-prompt" placeholder="Optional. Leave blank to use the attention-respecting default." style="min-height: 96px"></textarea>
         </div>
         <div class="actions">
-          <button id="run" class="btn primary">Run</button>
+          <button id="run" class="btn primary">Run A/B</button>
         </div>
       </section>
 
@@ -48,8 +48,20 @@
         </div>
 
         <div class="card">
-          <h2>Final answer</h2>
-          <div id="answer" class="output muted">Run the agent to see the answer.</div>
+          <div class="row" style="justify-content: space-between">
+            <h2 style="margin:0">Result</h2>
+            <span class="badge">same message · same core prompt</span>
+          </div>
+          <div class="ab-grid" style="margin-top:14px">
+            <div class="ab-panel">
+              <div class="row" style="justify-content: space-between"><h3>A · Simple agent</h3><span class="badge">no tools</span></div>
+              <div id="simple-answer" class="output muted">Run A/B to see the baseline.</div>
+            </div>
+            <div class="ab-panel">
+              <div class="row" style="justify-content: space-between"><h3>B · Mold agent</h3><span class="badge">selected mold</span></div>
+              <div id="mold-answer" class="output muted">Run A/B to see the mold-shaped answer.</div>
+            </div>
+          </div>
           <hr>
           <h3>Mold state</h3>
           <pre id="state" class="json">{}</pre>
