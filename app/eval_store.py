@@ -150,9 +150,9 @@ def stats():
             """
             SELECT
                 COUNT(*) AS total_cases,
-                SUM(CASE WHEN human_winner IS NULL THEN 1 ELSE 0 END) AS pending_cases,
-                SUM(CASE WHEN human_winner IS NOT NULL THEN 1 ELSE 0 END) AS voted_cases,
-                SUM(CASE WHEN human_winner IS NOT NULL AND judge_suggestion = human_winner THEN 1 ELSE 0 END) AS judge_correct
+                COALESCE(SUM(CASE WHEN human_winner IS NULL THEN 1 ELSE 0 END), 0) AS pending_cases,
+                COALESCE(SUM(CASE WHEN human_winner IS NOT NULL THEN 1 ELSE 0 END), 0) AS voted_cases,
+                COALESCE(SUM(CASE WHEN human_winner IS NOT NULL AND judge_suggestion = human_winner THEN 1 ELSE 0 END), 0) AS judge_correct
             FROM eval_cases
             """
         ).fetchone())
