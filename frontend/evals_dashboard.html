@@ -41,6 +41,17 @@
         <h2>Recent votes</h2>
         <div id="recent" class="stack"></div>
       </section>
+
+      <section class="card">
+        <div class="row" style="justify-content: space-between">
+          <div>
+            <h2 style="margin-bottom:6px">Eval data</h2>
+            <p class="muted" style="margin:0">Delete generated samples, batches, cases, feedback votes, and dashboard stats.</p>
+          </div>
+          <button id="delete-data" class="btn danger">Delete eval data</button>
+        </div>
+        <div id="delete-status" class="muted" style="margin-top:10px"></div>
+      </section>
     </main>
   </div>
   <script type="module" src="/static/evals_dashboard.js"></script>

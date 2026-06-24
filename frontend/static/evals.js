@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-const state = { case: null, votes: {} };
+const state = { case: null, votes: {}, batchPoll: null, activeBatchId: null };
 
 async function api(url, options = {}) {
   const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -303,20 +303,80 @@ async function submitVote() {
   }
 }
 
+function stopBatchPolling() {
+  if (state.batchPoll) clearInterval(state.batchPoll);
+  state.batchPoll = null;
+  state.activeBatchId = null;
+}
+
+function renderBatchProgress(batch) {
+  if (!batch) {
+    $('generate').disabled = false;
+    $('generate').textContent = 'Generate 5 blind tests';
+    if (!$('generate-status').textContent.includes('failed')) $('generate-status').textContent = '';
+    return;
+  }
+  const created = batch.created_cases || 0;
+  const target = batch.target_count || 5;
+  if (batch.status === 'running') {
+    $('generate').disabled = true;
+    $('generate').textContent = 'Generating…';
+    $('generate-status').textContent = `Generating ${created} / ${target} blind tests. Safe to refresh — progress is saved.`;
+    return;
+  }
+  $('generate').disabled = false;
+  $('generate').textContent = 'Generate 5 blind tests';
+  if (batch.status === 'failed') {
+    $('generate-status').textContent = batch.error || 'Batch generation failed.';
+  } else {
+    $('generate-status').textContent = `Batch ready: ${created} / ${target} tests generated.`;
+  }
+}
+
+async function pollBatch(batchId) {
+  const { batch } = await api(`/api/evals/batch/${batchId}`);
+  renderBatchProgress(batch);
+  if (!batch || batch.status !== 'running') {
+    stopBatchPolling();
+    await loadStatsBadge();
+    if (batch?.status === 'done') await loadNext();
+  }
+}
+
+function startBatchPolling(batch) {
+  if (!batch) return;
+  stopBatchPolling();
+  state.activeBatchId = batch.id;
+  renderBatchProgress(batch);
+  if (batch.status !== 'running') return;
+  state.batchPoll = setInterval(() => {
+    pollBatch(batch.id).catch(err => {
+      stopBatchPolling();
+      $('generate').disabled = false;
+      $('generate').textContent = 'Generate 5 blind tests';
+      $('generate-status').textContent = err.message;
+    });
+  }, 2500);
+}
+
+async function loadActiveBatch() {
+  const { batch } = await api('/api/evals/batch/active');
+  if (batch) startBatchPolling(batch);
+  else renderBatchProgress(null);
+}
+
 async function generateBatch() {
   $('generate').disabled = true;
-  $('generate').textContent = 'Generating…';
-  $('generate-status').textContent = 'Creating 5 blind tests and inline feedback prompts. This can take a few minutes.';
+  $('generate').textContent = 'Starting…';
+  $('generate-status').textContent = 'Starting background generation…';
   try {
-    await api('/api/evals/batch', {
+    const { batch } = await api('/api/evals/batch', {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    $('generate-status').textContent = 'Batch ready.';
-    await loadNext();
+    startBatchPolling(batch);
   } catch (err) {
     $('generate-status').textContent = err.message;
-  } finally {
     $('generate').disabled = false;
     $('generate').textContent = 'Generate 5 blind tests';
   }
@@ -327,3 +387,4 @@ $('submit-vote').addEventListener('click', submitVote);
 $('next').addEventListener('click', loadNext);
 
 await loadNext();
+await loadActiveBatch();

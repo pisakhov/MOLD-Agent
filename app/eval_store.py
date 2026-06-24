@@ -50,6 +50,59 @@ def finish_batch(batch_id: str, status: str = "done", error: str | None = None):
         )
 
 
+def fail_stale_batches(hours: int = 2):
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE eval_batches
+            SET status = 'failed', error = 'Batch generation stopped before finishing.', finished_at = CURRENT_TIMESTAMP
+            WHERE status = 'running' AND created_at < datetime('now', ?)
+            """,
+            (f"-{hours} hours",),
+        )
+
+
+def active_batch():
+    fail_stale_batches()
+    with connect() as conn:
+        return row(conn.execute(
+            "SELECT * FROM eval_batches WHERE status = 'running' ORDER BY created_at DESC LIMIT 1"
+        ).fetchone())
+
+
+def get_batch(batch_id: str):
+    with connect() as conn:
+        return row(conn.execute("SELECT * FROM eval_batches WHERE id = ?", (batch_id,)).fetchone())
+
+
+def batch_progress(batch_id: str):
+    with connect() as conn:
+        batch = row(conn.execute("SELECT * FROM eval_batches WHERE id = ?", (batch_id,)).fetchone())
+        if not batch:
+            return None
+        counts = row(conn.execute(
+            """
+            SELECT
+                COUNT(*) AS created_cases,
+                COALESCE(SUM(CASE WHEN human_winner IS NULL THEN 1 ELSE 0 END), 0) AS pending_cases,
+                COALESCE(SUM(CASE WHEN human_winner IS NOT NULL THEN 1 ELSE 0 END), 0) AS voted_cases
+            FROM eval_cases
+            WHERE batch_id = ?
+            """,
+            (batch_id,),
+        ).fetchone())
+    batch.update(counts or {})
+    batch["progress"] = (batch.get("created_cases") or 0) / batch["target_count"] if batch.get("target_count") else 0
+    return batch
+
+
+def clear_eval_data():
+    with connect() as conn:
+        conn.execute("DELETE FROM eval_cases")
+        conn.execute("DELETE FROM eval_batches")
+        conn.execute("DELETE FROM eval_samples")
+
+
 def create_case(data: dict[str, Any]):
     id = newid()
     payload = {

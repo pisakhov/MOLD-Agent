@@ -25,6 +25,7 @@ button { cursor: pointer; }
 .nav-links { display: flex; gap: 10px; }
 .nav-links a, .btn { border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 12px; padding: 10px 14px; }
 .btn.primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+.btn.danger { background: rgba(239, 68, 68, .12); color: #fecaca; border-color: rgba(239, 68, 68, .45); }
 .btn.ghost { background: transparent; }
 .grid { display: grid; grid-template-columns: 0.86fr 1.14fr; gap: 18px; align-items: start; }
 .card { background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 22px; padding: 20px; box-shadow: 0 24px 80px rgba(0,0,0,.22); }

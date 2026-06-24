@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 
-async function api(url) {
-  const r = await fetch(url);
+async function api(url, options = {}) {
+  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
   const data = await r.json();
   if (!r.ok) throw new Error(data.detail || 'Request failed');
   return data;
@@ -25,6 +25,22 @@ function winningKind(item) {
   if (!item.human_winner) return '—';
   if (item.human_winner === 'tie') return 'tie';
   return item.human_winner === 'A' ? item.option_a_kind : item.option_b_kind;
+}
+
+async function deleteEvalData() {
+  if (!confirm('Delete all eval data? This removes generated cases, feedback votes, samples, and dashboard stats.')) return;
+  if (!confirm('Really delete all eval data? This cannot be undone.')) return;
+  $('delete-data').disabled = true;
+  $('delete-status').textContent = 'Deleting…';
+  try {
+    await api('/api/evals/data', { method: 'DELETE' });
+    $('delete-status').textContent = 'Eval data deleted.';
+    await load();
+  } catch (err) {
+    $('delete-status').textContent = err.message;
+  } finally {
+    $('delete-data').disabled = false;
+  }
 }
 
 async function load() {
@@ -60,5 +76,7 @@ async function load() {
     </div>
   `).join('') : '<p class="muted">No recent feedback.</p>';
 }
+
+$('delete-data').addEventListener('click', deleteEvalData);
 
 load().catch(err => { document.body.innerHTML = `<pre>${esc(err.message)}</pre>`; });

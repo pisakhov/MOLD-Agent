@@ -16,6 +16,7 @@ from app.routes_agent import DEFAULT_PROMPT, RunRequest, extract_text, run_mold_
 
 router = APIRouter()
 BATCH_SIZE = 5
+RUNNING_BATCH_TASKS: set[asyncio.Task] = set()
 
 
 class BatchCreate(BaseModel):
@@ -419,27 +420,75 @@ async def build_case(batch_id: str, requested_mold_name: str | None, generator_l
     })
 
 
+def public_batch(batch: dict[str, Any] | None):
+    if not batch:
+        return None
+    progress = eval_store.batch_progress(batch["id"]) or batch
+    target = progress.get("target_count") or BATCH_SIZE
+    created = progress.get("created_cases") or 0
+    return {
+        "id": progress["id"],
+        "mold_name": progress["mold_name"],
+        "target_count": target,
+        "created_cases": created,
+        "pending_cases": progress.get("pending_cases") or 0,
+        "voted_cases": progress.get("voted_cases") or 0,
+        "status": progress["status"],
+        "error": progress.get("error"),
+        "progress": created / target if target else 0,
+        "created_at": progress.get("created_at"),
+        "finished_at": progress.get("finished_at"),
+    }
+
+
+async def generate_batch_cases(batch_id: str, requested_mold_name: str | None):
+    try:
+        generator_llm = build_chain_llm()
+        if not generator_llm:
+            raise ValueError("Configure at least one model in Settings first")
+        await ensure_samples(generator_llm)
+        if eval_store.sample_count() < BATCH_SIZE:
+            raise ValueError("Could not bootstrap enough eval samples; try again")
+        progress = eval_store.batch_progress(batch_id)
+        existing = progress.get("created_cases") if progress else 0
+        for _ in range(max(0, BATCH_SIZE - (existing or 0))):
+            await build_case(batch_id, requested_mold_name, generator_llm)
+        eval_store.finish_batch(batch_id)
+    except Exception as exc:
+        eval_store.finish_batch(batch_id, "failed", str(exc))
+
+
+def schedule_batch_generation(batch_id: str, requested_mold_name: str | None):
+    task = asyncio.create_task(generate_batch_cases(batch_id, requested_mold_name))
+    RUNNING_BATCH_TASKS.add(task)
+    task.add_done_callback(RUNNING_BATCH_TASKS.discard)
+
+
 @router.post("/batch")
 async def create_batch(body: BatchCreate):
     if body.mold_name and body.mold_name not in AVAILABLE_MOLDS:
         raise HTTPException(status_code=400, detail="Unknown mold")
-    generator_llm = build_chain_llm()
-    if not generator_llm:
+    active = eval_store.active_batch()
+    if active:
+        return {"batch": public_batch(active)}
+    if not build_chain_llm():
         raise HTTPException(status_code=400, detail="Configure at least one model in Settings first")
-
-    await ensure_samples(generator_llm)
-    if eval_store.sample_count() < BATCH_SIZE:
-        raise HTTPException(status_code=400, detail="Could not bootstrap enough eval samples; try again")
     batch_id = eval_store.create_batch(body.mold_name or "auto", BATCH_SIZE)
-    cases = []
-    try:
-        for _ in range(BATCH_SIZE):
-            cases.append(await build_case(batch_id, body.mold_name, generator_llm))
-        eval_store.finish_batch(batch_id)
-    except Exception as exc:
-        eval_store.finish_batch(batch_id, "failed", str(exc))
-        raise HTTPException(status_code=400, detail=str(exc))
-    return {"batch_id": batch_id, "cases": [public_case(case) for case in cases]}
+    schedule_batch_generation(batch_id, body.mold_name)
+    return {"batch": public_batch(eval_store.get_batch(batch_id))}
+
+
+@router.get("/batch/active")
+def active_batch():
+    return {"batch": public_batch(eval_store.active_batch())}
+
+
+@router.get("/batch/{batch_id}")
+def batch_status(batch_id: str):
+    batch = eval_store.get_batch(batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return {"batch": public_batch(batch)}
 
 
 @router.get("/next")
@@ -535,6 +584,15 @@ def feedback_signal_stats():
             bucket["simple_signal_avg"] = bucket["simple_signal_score"] / bucket["signal_cases"]
             bucket["mold_signal_delta"] = bucket["mold_signal_avg"] - bucket["simple_signal_avg"]
     return {"summary": summary, "per_mold": per_mold}
+
+
+@router.delete("/data")
+def delete_eval_data():
+    active = eval_store.active_batch()
+    if active:
+        raise HTTPException(status_code=409, detail="A batch is still generating. Wait for it to finish before deleting eval data.")
+    eval_store.clear_eval_data()
+    return eval_stats()
 
 
 @router.get("/stats")
