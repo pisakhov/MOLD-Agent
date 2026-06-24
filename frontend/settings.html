@@ -26,7 +26,10 @@
     </div>
 
     <section>
-        <h2 class="text-lg font-semibold tracking-tight mb-4">Providers</h2>
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold tracking-tight">Providers</h2>
+            <button id="connectCodex" class="px-3 py-2 rounded-lg border border-neutral-300 text-sm font-medium hover:bg-neutral-50 transition-colors">Connect Codex</button>
+        </div>
         <div id="providersList" class="space-y-2 mb-4"></div>
         <details class="border border-neutral-200 rounded-xl p-5">
             <summary class="cursor-pointer text-sm font-medium">+ Add provider</summary>
@@ -89,6 +92,31 @@
             <div class="flex gap-2">
                 <button onclick="closeModal()" class="text-sm px-4 py-1.5 rounded-lg border border-neutral-300 hover:bg-neutral-50 transition-colors">Cancel</button>
                 <button onclick="addSelectedModels()" class="text-sm px-4 py-1.5 rounded-lg bg-neutral-900 text-white font-medium hover:bg-neutral-700 transition-colors">Add selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="codexModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div class="absolute inset-0 bg-neutral-900/40" onclick="closeCodexModal()"></div>
+    <div class="relative bg-white rounded-xl border border-neutral-200 shadow-xl w-full max-w-md">
+        <div class="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
+            <h3 class="font-semibold tracking-tight">Connect Codex Subscription</h3>
+            <button onclick="closeCodexModal()" class="text-neutral-400 hover:text-neutral-900 text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <p class="text-sm font-medium mb-2">1. Open the OpenAI login page</p>
+                <button id="codexOpenLogin" disabled class="w-full py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-700 disabled:opacity-40 transition-colors">Open OpenAI Login</button>
+            </div>
+            <div>
+                <p class="text-sm font-medium mb-2">2. Paste the callback URL</p>
+                <p class="text-xs text-neutral-500 mb-2">After sign-in, the browser will land on <code class="bg-neutral-100 px-1 rounded">localhost:1455</code> and may show an error. Copy the full address bar URL.</p>
+                <input id="codexCallbackUrl" placeholder="http://localhost:1455/auth/callback?code=..." class="w-full px-3 py-2 text-sm font-mono rounded-lg border border-neutral-300 focus:border-neutral-900 focus:outline-none">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeCodexModal()" class="flex-1 text-sm px-4 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-50 transition-colors">Cancel</button>
+                <button id="codexConnect" class="flex-1 text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium hover:bg-neutral-700 transition-colors">Connect</button>
             </div>
         </div>
     </div>

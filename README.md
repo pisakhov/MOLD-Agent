@@ -134,7 +134,7 @@ Open:
 - `/` — MOLD Lab for running attention molds
 - `/settings` — provider/model settings and fallback chain
 
-The settings flow is inspired by the Disagreement-of-Thought lab and Alex model manager: add a provider, detect/select models, test a model, then save a short ordered fallback chain. API keys are encrypted with `SECRET_KEY`; if none is set, a local `.data/secret_key` is created for dev. Codex uses the same DoT-style auth: it can auto-seed from `~/.codex/auth.json`, `CODEX_AUTH_JSON`, or `CODEX_AUTH_JSON_B64`, and the Codex provider field also accepts the full auth JSON/tokens JSON.
+The settings flow is inspired by the Disagreement-of-Thought lab and Alex model manager: add a provider, detect/select models, test a model, then save a short ordered fallback chain. API keys are encrypted with `SECRET_KEY`; if none is set, a local `.data/secret_key` is created for dev. Codex uses the same Alex/DoT-style auth: use Settings → Connect Codex for the PKCE login flow, or auto-seed from `~/.codex/auth.json`, `CODEX_AUTH_JSON`, or `CODEX_AUTH_JSON_B64`; the Codex provider field also accepts the full auth JSON/tokens JSON.
 
 Docker/Dokploy entrypoint:
 

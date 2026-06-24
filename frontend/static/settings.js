@@ -19,6 +19,10 @@ function esc(value) {
     return String(value ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+function js(value) {
+    return esc(JSON.stringify(String(value ?? "")));
+}
+
 async function renderProviders() {
     const res = await api("/api/models/providers");
     providers = res.providers;
@@ -31,8 +35,8 @@ async function renderProviders() {
                     <div class="text-xs text-neutral-400">${esc(p.base_url || "default endpoint")}</div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="detectModels('${p.id}', '${esc(p.name)}')" class="${BTN_GO}">Detect models</button>
-                    <button onclick="deleteProvider('${p.id}')" class="${BTN_RED}">Delete</button>
+                    <button onclick="detectModels(${js(p.id)}, ${js(p.name)})" class="${BTN_GO}">Detect models</button>
+                    <button onclick="deleteProvider(${js(p.id)})" class="${BTN_RED}">Delete</button>
                 </div>
             </div>`).join("");
 
@@ -72,7 +76,7 @@ function renderModalList() {
         ? '<p class="text-neutral-400 text-sm py-2">No models match.</p>'
         : rows.map(m => `
             <label class="flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-neutral-50 cursor-pointer text-sm">
-                <input type="checkbox" ${detectState.checked.has(m.id) ? "checked" : ""} onchange="toggleModel('${esc(m.id)}', this.checked)">
+                <input type="checkbox" ${detectState.checked.has(m.id) ? "checked" : ""} onchange="toggleModel(${js(m.id)}, this.checked)">
                 <span class="font-mono">${esc(m.id)}</span>
             </label>`).join("");
     $("modalCount").textContent = `${detectState.checked.size} selected · ${detectState.models.length} available`;
@@ -105,6 +109,48 @@ async function addSelectedModels() {
     await renderAll();
 }
 
+function closeCodexModal() {
+    $("codexModal").classList.add("hidden");
+}
+
+async function openCodexModal() {
+    $("codexCallbackUrl").value = "";
+    $("codexOpenLogin").disabled = true;
+    $("codexOpenLogin").onclick = null;
+    $("codexModal").classList.remove("hidden");
+    try {
+        const { auth_url } = await api("/api/codex/auth-url");
+        $("codexOpenLogin").disabled = false;
+        $("codexOpenLogin").onclick = () => window.open(auth_url, "_blank");
+    } catch (err) {
+        closeCodexModal();
+        alert(`Failed to start Codex auth: ${err.message}`);
+    }
+}
+
+async function connectCodex() {
+    const callbackUrl = $("codexCallbackUrl").value.trim();
+    if (!callbackUrl) return alert("Paste the callback URL first.");
+    const btn = $("codexConnect");
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Connecting…";
+    try {
+        const provider = await api("/api/codex/exchange", { method: "POST", body: JSON.stringify({ callback_url: callbackUrl }) });
+        closeCodexModal();
+        await renderAll();
+        await detectModels(provider.id, provider.name);
+    } catch (err) {
+        alert(`Failed to connect Codex: ${err.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+    }
+}
+
+$("connectCodex").addEventListener("click", openCodexModal);
+$("codexConnect").addEventListener("click", connectCodex);
+
 $("providerForm").addEventListener("submit", async e => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
@@ -130,8 +176,8 @@ async function renderModels() {
                     <div class="text-xs text-neutral-400">${esc(m.provider_name)} · ${esc(m.model_id)}</div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="testModel('${m.id}')" class="${BTN_GO}">Test</button>
-                    <button onclick="deleteModel('${m.id}')" class="${BTN_RED}">Delete</button>
+                    <button onclick="testModel(${js(m.id)})" class="${BTN_GO}">Test</button>
+                    <button onclick="deleteModel(${js(m.id)})" class="${BTN_RED}">Delete</button>
                 </div>
             </div>`).join("");
 }
@@ -239,6 +285,7 @@ window.toggleModel = toggleModel;
 window.toggleSelectAll = toggleSelectAll;
 window.closeModal = closeModal;
 window.addSelectedModels = addSelectedModels;
+window.closeCodexModal = closeCodexModal;
 window.testModel = testModel;
 window.deleteModel = deleteModel;
 window.setChainField = setChainField;

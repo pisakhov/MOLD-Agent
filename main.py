@@ -11,6 +11,7 @@ load_dotenv()
 
 from app.database import init_db
 from app.routes_agent import router as agent_router
+from app.routes_codex import router as codex_router
 from app.routes_models import router as models_router
 
 
@@ -37,6 +38,7 @@ async def auth_gate(request: Request, call_next):
     return RedirectResponse("/login", status_code=303)
 
 app.include_router(agent_router, prefix="/api", tags=["agent"])
+app.include_router(codex_router, prefix="/api/codex", tags=["codex"])
 app.include_router(models_router, prefix="/api/models", tags=["models"])
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 templates = Jinja2Templates(directory="frontend")
