@@ -44,6 +44,50 @@ def init_db():
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS eval_samples (
+                id TEXT PRIMARY KEY,
+                system_prompt TEXT NOT NULL,
+                user_message TEXT NOT NULL,
+                source TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS eval_batches (
+                id TEXT PRIMARY KEY,
+                mold_name TEXT NOT NULL,
+                target_count INTEGER NOT NULL DEFAULT 5,
+                status TEXT NOT NULL DEFAULT 'running',
+                error TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                finished_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS eval_cases (
+                id TEXT PRIMARY KEY,
+                batch_id TEXT NOT NULL REFERENCES eval_batches(id) ON DELETE CASCADE,
+                seed_samples_json TEXT NOT NULL,
+                system_prompt TEXT NOT NULL,
+                user_message TEXT NOT NULL,
+                generation_notes TEXT,
+                mold_name TEXT NOT NULL,
+                option_a_kind TEXT NOT NULL,
+                option_b_kind TEXT NOT NULL,
+                option_a_answer TEXT NOT NULL,
+                option_b_answer TEXT NOT NULL,
+                simple_answer TEXT NOT NULL,
+                mold_answer TEXT NOT NULL,
+                mold_state_json TEXT NOT NULL,
+                mold_trace_json TEXT NOT NULL,
+                rubric_json TEXT NOT NULL,
+                judge_suggestion TEXT,
+                judge_confidence REAL,
+                judge_rationale TEXT,
+                human_winner TEXT,
+                criteria_votes_json TEXT,
+                voted_at TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
             """
         )
 

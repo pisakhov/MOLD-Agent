@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MOLD Eval Dashboard</title>
+  <link rel="stylesheet" href="/global.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="/"><span class="logo"></span><span>MOLD Eval Dashboard</span></a>
+      <div class="nav-links">
+        <a href="/evals">Arena</a>
+        <a href="/">Lab</a>
+        <a href="/settings">Settings</a>
+        <a href="/api/evals/export" target="_blank">Export JSONL</a>
+      </div>
+    </nav>
+
+    <section class="hero compact">
+      <span class="badge">human votes · hidden judge agreement</span>
+      <h1>Is the mold winning?</h1>
+      <p>Track blind human preference, mold win rate, and whether the judge is learning to predict your selections.</p>
+    </section>
+
+    <main class="stack">
+      <section class="stats-grid">
+        <div class="card metric"><span>Total cases</span><strong id="total">0</strong></div>
+        <div class="card metric"><span>Pending</span><strong id="pending">0</strong></div>
+        <div class="card metric"><span>Mold win rate</span><strong id="mold-rate">0%</strong></div>
+        <div class="card metric"><span>Judge accuracy</span><strong id="judge-rate">0%</strong></div>
+      </section>
+
+      <section class="card">
+        <h2>By mold</h2>
+        <div id="per-mold" class="stack"></div>
+      </section>
+
+      <section class="card">
+        <h2>Recent votes</h2>
+        <div id="recent" class="stack"></div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/static/evals_dashboard.js"></script>
+</body>
+</html>

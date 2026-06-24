@@ -12,6 +12,7 @@ load_dotenv()
 from app.database import init_db
 from app.routes_agent import router as agent_router
 from app.routes_codex import router as codex_router
+from app.routes_eval import router as eval_router
 from app.routes_models import router as models_router
 
 
@@ -39,6 +40,7 @@ async def auth_gate(request: Request, call_next):
 
 app.include_router(agent_router, prefix="/api", tags=["agent"])
 app.include_router(codex_router, prefix="/api/codex", tags=["codex"])
+app.include_router(eval_router, prefix="/api/evals", tags=["evals"])
 app.include_router(models_router, prefix="/api/models", tags=["models"])
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 templates = Jinja2Templates(directory="frontend")
@@ -76,6 +78,16 @@ def home(request: Request):
 @app.get("/settings")
 def settings(request: Request):
     return templates.TemplateResponse(request, "settings.html")
+
+
+@app.get("/evals")
+def evals(request: Request):
+    return templates.TemplateResponse(request, "evals.html")
+
+
+@app.get("/evals/dashboard")
+def evals_dashboard(request: Request):
+    return templates.TemplateResponse(request, "evals_dashboard.html")
 
 
 @app.get("/global.css")
