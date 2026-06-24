@@ -218,63 +218,121 @@ async function deleteModel(id) {
     await renderAll();
 }
 
-async function renderChain() {
+function chainModel(entry) {
+    return models.find(x => x.id === entry.model_id);
+}
+
+function modelProviderBadge(model) {
+    return `${esc(model.provider_name)} · ${esc(model.provider_type)}`;
+}
+
+function setChainStatus(text, tone = "neutral") {
+    const el = $("chainStatus");
+    if (!el) return;
+    el.textContent = text;
+    el.className = `text-xs ${tone === "error" ? "text-red-500" : tone === "saving" ? "text-neutral-900" : "text-neutral-400"}`;
+}
+
+function normalizeChainEntry(entry) {
+    return {
+        model_id: entry.model_id,
+        timeout: Math.max(1, parseInt(entry.timeout) || 120),
+        retries: Math.max(0, parseInt(entry.retries) || 0),
+    };
+}
+
+async function saveChainNow() {
+    chain = chain.map(normalizeChainEntry);
+    setChainStatus("Saving…", "saving");
+    try {
+        await api("/api/models/chain", { method: "PUT", body: JSON.stringify(chain) });
+        setChainStatus("Saved");
+    } catch (err) {
+        setChainStatus("Save failed", "error");
+        alert(`Failed to save chain: ${err.message}`);
+    }
+}
+
+async function loadChain() {
     const res = await api("/api/models/chain");
-    chain = res.chain;
-    $("chainAdd").innerHTML = '<option value="">+ Add model to chain</option>' + models
-        .filter(m => !chain.some(e => e.model_id === m.id))
-        .map(m => `<option value="${m.id}">${esc(m.display_name)} (${esc(m.provider_name)})</option>`)
-        .join("");
+    chain = res.chain.map(normalizeChainEntry);
+    renderChain();
+}
+
+function renderChain() {
+    const activeIds = new Set(chain.map(e => e.model_id));
+    const available = models.filter(m => m.enabled && !activeIds.has(m.id));
 
     $("chainList").innerHTML = chain.length === 0
-        ? '<p class="text-neutral-400 text-sm">No fallback chain. Add one model or mark a model as default.</p>'
+        ? '<div class="border border-dashed border-neutral-300 rounded-lg p-4 text-sm text-neutral-400">No fallback chain yet. Add one model from the right.</div>'
         : chain.map((entry, i) => {
-            const m = models.find(x => x.id === entry.model_id);
+            const m = chainModel(entry);
             return `
-                <div class="${ROW}">
-                    <div class="text-sm flex-1"><span class="text-neutral-400 font-mono">${i + 1}.</span> ${esc(m ? m.display_name : entry.model_id)}</div>
-                    <div class="flex items-center gap-2 text-xs text-neutral-500">
-                        <label>timeout <input value="${entry.timeout}" type="number" min="1" onchange="setChainField(${i}, 'timeout', this.value)" class="w-16 px-2 py-1 rounded border border-neutral-300"></label>
-                        <label>retries <input value="${entry.retries}" type="number" min="0" onchange="setChainField(${i}, 'retries', this.value)" class="w-14 px-2 py-1 rounded border border-neutral-300"></label>
-                        <button onclick="moveChain(${i}, -1)" class="${BTN_GO}">↑</button>
-                        <button onclick="moveChain(${i}, 1)" class="${BTN_GO}">↓</button>
-                        <button onclick="removeChain(${i})" class="${BTN_RED}">Remove</button>
+                <div class="border border-neutral-200 rounded-lg p-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-xs text-neutral-400 font-mono mb-1">${i + 1}</div>
+                            <div class="font-medium text-sm truncate">${esc(m ? m.display_name : entry.model_id)}</div>
+                            <div class="text-xs text-neutral-400 truncate">${m ? modelProviderBadge(m) : "missing model"}</div>
+                        </div>
+                        <div class="flex gap-1 shrink-0">
+                            <button onclick="moveChain(${i}, -1)" class="${BTN_GO}" ${i === 0 ? "disabled" : ""}>↑</button>
+                            <button onclick="moveChain(${i}, 1)" class="${BTN_GO}" ${i === chain.length - 1 ? "disabled" : ""}>↓</button>
+                            <button onclick="removeChain(${i})" class="${BTN_RED}">Remove</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-3 text-xs text-neutral-500">
+                        <label>timeout seconds
+                            <input value="${entry.timeout}" type="number" min="1" onchange="setChainField(${i}, 'timeout', this.value)" class="mt-1 w-full px-2 py-1.5 rounded border border-neutral-300 text-neutral-900">
+                        </label>
+                        <label>retries
+                            <input value="${entry.retries}" type="number" min="0" onchange="setChainField(${i}, 'retries', this.value)" class="mt-1 w-full px-2 py-1.5 rounded border border-neutral-300 text-neutral-900">
+                        </label>
                     </div>
                 </div>`;
         }).join("");
+
+    $("chainAvailable").innerHTML = available.length === 0
+        ? '<p class="text-neutral-400 text-sm">All enabled models are already in the chain.</p>'
+        : available.map(m => `
+            <button onclick="addToChain(${js(m.id)})" class="w-full text-left border border-neutral-200 rounded-lg p-3 hover:border-neutral-900 hover:bg-neutral-50 transition-colors">
+                <div class="font-medium text-sm truncate">${esc(m.display_name)}</div>
+                <div class="text-xs text-neutral-400 truncate">${modelProviderBadge(m)}</div>
+                <div class="text-xs font-mono text-neutral-400 truncate mt-1">${esc(m.model_id)}</div>
+            </button>`).join("");
 }
 
-$("chainAdd").addEventListener("change", e => {
-    if (!e.target.value) return;
-    chain.push({ model_id: e.target.value, timeout: 120, retries: 1 });
+async function addToChain(modelId) {
+    if (chain.some(e => e.model_id === modelId)) return;
+    chain.push({ model_id: modelId, timeout: 120, retries: 1 });
     renderChain();
-});
-
-function setChainField(i, field, value) {
-    chain[i][field] = Math.max(field === "retries" ? 0 : 1, parseInt(value) || 0);
+    await saveChainNow();
 }
 
-function moveChain(i, direction) {
+async function setChainField(i, field, value) {
+    chain[i][field] = Math.max(field === "retries" ? 0 : 1, parseInt(value) || 0);
+    renderChain();
+    await saveChainNow();
+}
+
+async function moveChain(i, direction) {
     const j = i + direction;
     if (j < 0 || j >= chain.length) return;
     [chain[i], chain[j]] = [chain[j], chain[i]];
     renderChain();
+    await saveChainNow();
 }
 
-function removeChain(i) {
+async function removeChain(i) {
     chain.splice(i, 1);
     renderChain();
+    await saveChainNow();
 }
-
-$("saveChain").addEventListener("click", async () => {
-    await api("/api/models/chain", { method: "PUT", body: JSON.stringify(chain) });
-    alert("Chain saved.");
-});
 
 async function renderAll() {
     await renderProviders();
     await renderModels();
-    await renderChain();
+    await loadChain();
 }
 
 renderAll();
@@ -288,6 +346,7 @@ window.addSelectedModels = addSelectedModels;
 window.closeCodexModal = closeCodexModal;
 window.testModel = testModel;
 window.deleteModel = deleteModel;
+window.addToChain = addToChain;
 window.setChainField = setChainField;
 window.moveChain = moveChain;
 window.removeChain = removeChain;

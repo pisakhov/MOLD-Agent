@@ -65,13 +65,24 @@
     </section>
 
     <section>
-        <h2 class="text-lg font-semibold tracking-tight mb-1">Fallback chain</h2>
-        <p class="text-neutral-500 text-sm mb-4">The MOLD runner tries models in order. Keep this short to avoid agent fatigue.</p>
-        <div class="flex items-center gap-3 mb-3">
-            <select id="chainAdd" class="px-3 py-2 rounded-lg border border-neutral-300 focus:border-neutral-900 focus:outline-none flex-1 text-sm"></select>
-            <button id="saveChain" class="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-700 transition-colors">Save chain</button>
+        <div class="flex items-end justify-between gap-3 mb-1">
+            <h2 class="text-lg font-semibold tracking-tight">Fallback chain</h2>
+            <span id="chainStatus" class="text-xs text-neutral-400">Auto-saved</span>
         </div>
-        <div id="chainList" class="space-y-2"></div>
+        <p class="text-neutral-500 text-sm mb-4">Click a model to add it. The runner tries the chain top to bottom; changes save immediately.</p>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div class="lg:col-span-3 border border-neutral-200 rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-medium">Active order</h3>
+                    <span class="text-xs text-neutral-400">first match wins</span>
+                </div>
+                <div id="chainList" class="space-y-2"></div>
+            </div>
+            <div class="lg:col-span-2 border border-neutral-200 rounded-xl p-4">
+                <h3 class="text-sm font-medium mb-3">Available models</h3>
+                <div id="chainAvailable" class="space-y-2"></div>
+            </div>
+        </div>
     </section>
 </main>
 
