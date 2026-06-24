@@ -72,7 +72,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 .criterion-text { line-height: 1.45; }
 .criterion-actions { display: flex; gap: 8px; }
 .criterion-actions.vertical { flex-direction: column; align-items: stretch; min-width: 220px; }
-.feedback-choice { text-align: left; white-space: normal; line-height: 1.35; }
+.feedback-choice { display: flex; justify-content: space-between; gap: 10px; text-align: left; white-space: normal; line-height: 1.35; }
+.choice-effect { flex: 0 0 auto; border-radius: 999px; padding: 1px 7px; font-size: 11px; border: 1px solid var(--line); color: var(--muted); }
+.choice-effect.positive { color: #bbf7d0; border-color: rgba(34, 197, 94, .45); background: rgba(34, 197, 94, .12); }
+.choice-effect.negative { color: #fecaca; border-color: rgba(239, 68, 68, .45); background: rgba(239, 68, 68, .12); }
 .feedback-anchor { background: rgba(139, 92, 246, .22); color: var(--text); border: 1px solid rgba(139, 92, 246, .45); border-radius: 6px; padding: 0 3px; cursor: pointer; }
 .anchor-pin { margin-left: 5px; border: 1px solid rgba(139, 92, 246, .45); background: rgba(139, 92, 246, .14); color: var(--text); border-radius: 999px; padding: 1px 6px; font-size: 10px; vertical-align: middle; }
 .inline-feedback { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
