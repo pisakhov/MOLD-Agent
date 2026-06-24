@@ -134,7 +134,7 @@ Open:
 - `/` — MOLD Lab for running attention molds
 - `/settings` — provider/model settings and fallback chain
 
-The settings flow is inspired by the Disagreement-of-Thought lab and Alex model manager: add a provider, detect/select models, test a model, then save a short ordered fallback chain. API keys are encrypted with `SECRET_KEY`; if none is set, a local `.data/secret_key` is created for dev. Codex uses the same Alex/DoT-style auth: use Settings → Connect Codex for the PKCE login flow, or auto-seed from `~/.codex/auth.json`, `CODEX_AUTH_JSON`, or `CODEX_AUTH_JSON_B64`; the Codex provider field also accepts the full auth JSON/tokens JSON. The `/evals` arena generates batches of 5 blind A/B tests, shows an LLM-generated odd-count rubric for human criteria voting, hides judge suggestions until after vote, and tracks performance on `/evals/dashboard`.
+The settings flow is inspired by the Disagreement-of-Thought lab and Alex model manager: add a provider, detect/select models, test a model, then save a short ordered fallback chain. API keys are encrypted with `SECRET_KEY`; if none is set, a local `.data/secret_key` is created for dev. Codex uses the same Alex/DoT-style auth: use Settings → Connect Codex for the PKCE login flow, or auto-seed from `~/.codex/auth.json`, `CODEX_AUTH_JSON`, or `CODEX_AUTH_JSON_B64`; the Codex provider field also accepts the full auth JSON/tokens JSON. The `/evals` arena generates batches of 5 blind A/B tests, has an LLM scan the actual outputs and create case-specific response-feedback prompts/annotations, hides signal predictions until after feedback, and tracks performance on `/evals/dashboard`.
 
 Docker/Dokploy entrypoint:
 

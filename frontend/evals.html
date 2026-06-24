@@ -18,9 +18,9 @@
     </nav>
 
     <section class="hero compact">
-      <span class="badge">blind voting · batches of 5</span>
-      <h1>Vote by rubric. Reveal after.</h1>
-      <p>Generated system/user pairs are intentionally random. Options are blinded. Judge suggestion stays hidden until your vote.</p>
+      <span class="badge">blind feedback · batches of 5</span>
+      <h1>Give feedback while reading. Reveal after.</h1>
+      <p>The LLM scans each pair of outputs and asks case-specific questions about how they responded, including sentence-level annotations.</p>
     </section>
 
     <main class="eval-layout">
@@ -29,7 +29,7 @@
           <h2 style="margin:0">Batch</h2>
           <span id="pending-count" class="badge">loading…</span>
         </div>
-        <p class="muted">No setup. Each test auto-picks a mold, blinds the arms, and asks you to vote by criteria.</p>
+        <p class="muted">No setup. Each test auto-picks a mold, blinds the arms, and generates feedback prompts from the actual outputs.</p>
         <div class="actions">
           <button id="generate" class="btn primary">Generate 5 blind tests</button>
         </div>
@@ -66,12 +66,12 @@
 
         <div id="rubric-card" class="card hidden">
           <div class="row" style="justify-content: space-between">
-            <h2 style="margin:0">Rubric vote</h2>
+            <h2 style="margin:0">Response feedback</h2>
             <span id="vote-score" class="badge">0 / 0</span>
           </div>
           <div id="rubric" class="stack" style="margin-top:14px"></div>
           <div class="actions">
-            <button id="submit-vote" class="btn primary" disabled>Submit vote</button>
+            <button id="submit-vote" class="btn primary" disabled>Submit feedback</button>
           </div>
         </div>
 

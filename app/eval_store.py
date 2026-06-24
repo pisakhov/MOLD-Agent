@@ -116,7 +116,7 @@ def next_case():
         ).fetchone())
 
 
-def vote_case(case_id: str, winner: str, criteria_votes: dict[str, str]):
+def vote_case(case_id: str, winner: str, criteria_votes: dict[str, Any]):
     with connect() as conn:
         conn.execute(
             """

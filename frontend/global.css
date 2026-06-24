@@ -70,6 +70,13 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 .criterion { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 14px; }
 .criterion-text { line-height: 1.45; }
 .criterion-actions { display: flex; gap: 8px; }
+.criterion-actions.vertical { flex-direction: column; align-items: stretch; min-width: 220px; }
+.feedback-choice { text-align: left; white-space: normal; line-height: 1.35; }
+.feedback-anchor { background: rgba(139, 92, 246, .22); color: var(--text); border: 1px solid rgba(139, 92, 246, .45); border-radius: 6px; padding: 0 3px; cursor: pointer; }
+.quote-jump { width: 100%; margin-top: 10px; text-align: left; border: 1px solid var(--line); background: #0d0d10; color: var(--text); border-radius: 12px; padding: 10px; line-height: 1.45; }
+.quote-jump .badge { margin-right: 6px; }
+.pulse { animation: pulse-ring .9s ease; }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, .55); } 100% { box-shadow: 0 0 0 12px rgba(139, 92, 246, 0); } }
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .metric span { color: var(--muted); font-size: 13px; }
 .metric strong { display: block; font-size: 34px; letter-spacing: -0.05em; margin-top: 6px; }
