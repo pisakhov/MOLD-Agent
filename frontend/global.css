@@ -47,6 +47,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 .mold-card strong { display: block; margin-bottom: 3px; }
 .mold-card span, .muted { color: var(--muted); }
 .output { white-space: pre-wrap; line-height: 1.55; }
+.markdown { white-space: normal; overflow-wrap: anywhere; }
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown p, .markdown ul, .markdown ol, .markdown blockquote, .markdown table, .markdown pre { margin: 0 0 0.9em; }
+.markdown ul, .markdown ol { padding-left: 1.35em; }
+.markdown li { margin: 0.25em 0; }
+.markdown table { display: block; width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 14px; }
+.markdown th, .markdown td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.markdown th { background: #0d0d10; color: var(--text); }
+.markdown code { background: #0d0d10; border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; }
+.markdown pre { background: #0d0d10; border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow: auto; }
+.markdown pre code { border: 0; padding: 0; background: transparent; }
+.markdown blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--muted); }
 .ab-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .ab-panel { border: 1px solid var(--line); background: var(--panel-2); border-radius: 16px; padding: 14px; min-height: 180px; }
 .ab-panel h3 { margin: 0; font-size: 15px; }

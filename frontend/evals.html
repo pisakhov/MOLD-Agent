@@ -29,10 +29,7 @@
           <h2 style="margin:0">Batch</h2>
           <span id="pending-count" class="badge">loading…</span>
         </div>
-        <div class="field">
-          <label>Choose mold for this batch</label>
-          <div id="molds" class="stack"></div>
-        </div>
+        <p class="muted">No setup. Each test auto-picks a mold, blinds the arms, and asks you to vote by criteria.</p>
         <div class="actions">
           <button id="generate" class="btn primary">Generate 5 blind tests</button>
         </div>
@@ -93,6 +90,8 @@
       </section>
     </main>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script type="module" src="/static/evals.js"></script>
 </body>
 </html>

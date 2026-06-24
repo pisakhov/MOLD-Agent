@@ -12,18 +12,18 @@ function esc(value) {
   return String(value ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-function selectedMold() {
-  return document.querySelector('input[name="mold"]:checked')?.value || 'refined_minimal_final_response';
+if (window.marked) window.marked.setOptions({ gfm: true, breaks: true });
+
+function markdownHtml(value) {
+  const text = String(value ?? '');
+  if (!window.marked || !window.DOMPurify) return esc(text).replace(/\n/g, '<br>');
+  return window.DOMPurify.sanitize(window.marked.parse(text));
 }
 
-async function loadMolds() {
-  const { molds } = await api('/api/molds');
-  $('molds').innerHTML = molds.map((m, i) => `
-    <label class="mold-card">
-      <input type="radio" name="mold" value="${esc(m.name)}" ${i === 0 ? 'checked' : ''}>
-      <span><strong>${esc(m.title)}</strong><span>${esc(m.description)}</span></span>
-    </label>
-  `).join('');
+function renderMarkdown(id, value) {
+  const el = $(id);
+  el.classList.add('markdown');
+  el.innerHTML = markdownHtml(value);
 }
 
 async function loadStatsBadge() {
@@ -59,8 +59,8 @@ async function loadNext() {
   $('case-id').textContent = item.id.slice(0, 8);
   $('system-prompt').textContent = item.system_prompt;
   $('user-message').textContent = item.user_message;
-  $('option-a').textContent = item.option_a_answer;
-  $('option-b').textContent = item.option_b_answer;
+  renderMarkdown('option-a', item.option_a_answer);
+  renderMarkdown('option-b', item.option_b_answer);
   renderRubric();
 }
 
@@ -127,7 +127,7 @@ async function generateBatch() {
   try {
     await api('/api/evals/batch', {
       method: 'POST',
-      body: JSON.stringify({ mold_name: selectedMold() }),
+      body: JSON.stringify({}),
     });
     $('generate-status').textContent = 'Batch ready.';
     await loadNext();
@@ -143,5 +143,4 @@ $('generate').addEventListener('click', generateBatch);
 $('submit-vote').addEventListener('click', submitVote);
 $('next').addEventListener('click', loadNext);
 
-await loadMolds();
 await loadNext();

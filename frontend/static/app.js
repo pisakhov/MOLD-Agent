@@ -9,6 +9,21 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
+if (window.marked) window.marked.setOptions({ gfm: true, breaks: true });
+
+function markdownHtml(value) {
+  const text = String(value ?? '');
+  if (!window.marked || !window.DOMPurify) return escapeHtml(text).replace(/\n/g, '<br>');
+  return window.DOMPurify.sanitize(window.marked.parse(text));
+}
+
+function renderMarkdown(id, value, muted = false) {
+  const el = $(id);
+  el.classList.toggle('muted', muted);
+  el.classList.add('markdown');
+  el.innerHTML = markdownHtml(value);
+}
+
 async function loadMolds() {
   const { molds } = await api('/api/molds');
   $('molds').innerHTML = molds.map((m, i) => `
@@ -46,8 +61,7 @@ function showArm(id, arm) {
     el.textContent = arm.error;
     return;
   }
-  el.classList.remove('muted');
-  el.textContent = arm?.answer || '(no final answer)';
+  renderMarkdown(id, arm?.answer || '(no final answer)');
 }
 
 async function run() {

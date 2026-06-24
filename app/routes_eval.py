@@ -19,7 +19,7 @@ BATCH_SIZE = 5
 
 
 class BatchCreate(BaseModel):
-    mold_name: str = "refined_minimal_final_response"
+    mold_name: str | None = None
 
 
 class VoteBody(BaseModel):
@@ -216,7 +216,8 @@ def public_case(case: dict[str, Any] | None, reveal: bool = False):
     return out
 
 
-async def build_case(batch_id: str, mold_name: str, generator_llm):
+async def build_case(batch_id: str, requested_mold_name: str | None, generator_llm):
+    mold_name = requested_mold_name or random.choice(list(AVAILABLE_MOLDS))
     samples = eval_store.random_samples(BATCH_SIZE)
     pair = await generate_pair(generator_llm, samples)
     eval_store.create_sample(pair["system_prompt"], pair["user_message"], "case")
@@ -260,7 +261,7 @@ async def build_case(batch_id: str, mold_name: str, generator_llm):
 
 @router.post("/batch")
 async def create_batch(body: BatchCreate):
-    if body.mold_name not in AVAILABLE_MOLDS:
+    if body.mold_name and body.mold_name not in AVAILABLE_MOLDS:
         raise HTTPException(status_code=400, detail="Unknown mold")
     generator_llm = build_chain_llm()
     if not generator_llm:
@@ -269,7 +270,7 @@ async def create_batch(body: BatchCreate):
     await ensure_samples(generator_llm)
     if eval_store.sample_count() < BATCH_SIZE:
         raise HTTPException(status_code=400, detail="Could not bootstrap enough eval samples; try again")
-    batch_id = eval_store.create_batch(body.mold_name, BATCH_SIZE)
+    batch_id = eval_store.create_batch(body.mold_name or "auto", BATCH_SIZE)
     cases = []
     try:
         for _ in range(BATCH_SIZE):
