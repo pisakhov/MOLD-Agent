@@ -15,7 +15,7 @@ def seed_codex_from_auth():
         if existing:
             return existing["id"]
     provider = create_provider("Codex (ChatGPT)", "codex", None, json.dumps(tokens))
-    create_model(provider["id"], "gpt-5.5", "gpt-5.5", enabled=True, is_default=True)
+    create_model(provider["id"], "gpt-5.1-codex", "gpt-5.1-codex", enabled=True, is_default=True)
     return provider["id"]
 
 

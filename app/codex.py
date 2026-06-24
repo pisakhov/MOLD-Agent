@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, AsyncIterator, List, Optional, Sequence
 
@@ -17,24 +18,51 @@ TOKEN_URL = "https://auth.openai.com/oauth/token"
 CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 CODEX_AUTH = Path.home() / ".codex" / "auth.json"
 CODEX_MODELS = [
-    "gpt-5.1", "gpt-5.1-codex-max", "gpt-5.1-codex-mini",
-    "gpt-5.2", "gpt-5.2-codex",
+    "gpt-5.1-codex", "gpt-5.1-codex-max", "gpt-5.1-codex-mini", "gpt-5-codex",
+    "gpt-5.1", "gpt-5.2", "gpt-5.2-codex",
     "gpt-5.3-codex", "gpt-5.3-codex-spark",
     "gpt-5.4", "gpt-5.4-mini", "gpt-5.5",
 ]
 
 
+def decode_jwt(token: str) -> dict:
+    try:
+        payload = token.split(".")[1]
+        padded = payload + "=" * (-len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(padded))
+    except Exception:
+        return {}
+
+
 def get_account_id(access_token: str) -> str:
-    payload = access_token.split(".")[1]
-    padded = payload + "=" * (4 - len(payload) % 4)
-    data = json.loads(base64.urlsafe_b64decode(padded))
-    return data["https://api.openai.com/auth"]["chatgpt_account_id"]
+    return get_account_id_from_tokens({"access_token": access_token})
+
+
+def get_account_id_from_tokens(tokens: dict) -> str:
+    for key in ("id_token", "access_token"):
+        claims = decode_jwt(tokens.get(key, ""))
+        auth = claims.get("https://api.openai.com/auth") or {}
+        if auth.get("chatgpt_account_id"):
+            return auth["chatgpt_account_id"]
+    raise ValueError("Codex auth token is missing chatgpt_account_id")
 
 
 def token_expiry(access_token: str) -> int:
-    payload = access_token.split(".")[1]
-    padded = payload + "=" * (4 - len(payload) % 4)
-    return int(json.loads(base64.urlsafe_b64decode(padded)).get("exp", time.time() + 3600))
+    return int(decode_jwt(access_token).get("exp", time.time() + 3600))
+
+
+def normalize_expiry(value, access_token: str) -> int:
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str) and value:
+        try:
+            return int(float(value))
+        except ValueError:
+            try:
+                return int(datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp())
+            except ValueError:
+                pass
+    return token_expiry(access_token)
 
 
 def normalize_tokens(value: str | dict) -> dict:
@@ -42,11 +70,14 @@ def normalize_tokens(value: str | dict) -> dict:
     tokens = data.get("tokens") if isinstance(data, dict) and "tokens" in data else data
     if not tokens.get("access_token") or not tokens.get("refresh_token"):
         raise ValueError("Codex auth must include access_token and refresh_token")
-    return {
+    normalized = {
         "access_token": tokens["access_token"],
         "refresh_token": tokens["refresh_token"],
-        "expires": int(tokens.get("expires") or token_expiry(tokens["access_token"])),
+        "expires": normalize_expiry(tokens.get("expires") or tokens.get("expires_at"), tokens["access_token"]),
     }
+    if tokens.get("id_token"):
+        normalized["id_token"] = tokens["id_token"]
+    return normalized
 
 
 def load_auth_tokens() -> dict | None:
@@ -62,20 +93,29 @@ def load_auth_tokens() -> dict | None:
 
 
 def refresh_tokens(tokens: dict) -> tuple[dict, bool]:
+    tokens = normalize_tokens(tokens)
     if tokens["expires"] > time.time() + 60:
         return tokens, False
     res = httpx.post(TOKEN_URL, data={
         "grant_type": "refresh_token",
         "refresh_token": tokens["refresh_token"],
         "client_id": CLIENT_ID,
-    })
+    }, timeout=30)
     res.raise_for_status()
     data = res.json()
-    return {
+    updated = {
         "access_token": data["access_token"],
-        "refresh_token": data["refresh_token"],
+        "refresh_token": data.get("refresh_token") or tokens["refresh_token"],
         "expires": int(time.time() + data["expires_in"]),
-    }, True
+    }
+    if data.get("id_token") or tokens.get("id_token"):
+        updated["id_token"] = data.get("id_token") or tokens.get("id_token")
+    return updated, True
+
+
+def codex_error(status_code: int, body: bytes) -> RuntimeError:
+    detail = body.decode(errors="replace").strip()[:800] or "empty response body"
+    return RuntimeError(f"Codex HTTP {status_code}: {detail}")
 
 
 def to_responses_tool(tool: Any) -> dict:
@@ -150,8 +190,6 @@ class CodexChatModel(BaseChatModel):
             "tool_choice": "auto",
             "parallel_tool_calls": self.parallel_tool_calls,
         }
-        if self.max_output_tokens:
-            body["max_output_tokens"] = self.max_output_tokens
         if self.tools:
             body["tools"] = self.tools
         return body
@@ -161,7 +199,8 @@ class CodexChatModel(BaseChatModel):
         text, tool_calls, pending = "", [], {}
         with httpx.Client(timeout=600) as client:
             with client.stream("POST", CODEX_URL, headers=self._headers(), json=self._body(input_msgs, system)) as res:
-                res.raise_for_status()
+                if res.status_code >= 400:
+                    raise codex_error(res.status_code, res.read())
                 for line in res.iter_lines():
                     text, tool_calls, pending = self._handle_line(line, text, tool_calls, pending)
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text, tool_calls=tool_calls))])
@@ -171,7 +210,8 @@ class CodexChatModel(BaseChatModel):
         indexes, args_seen, next_index = {}, {}, 0
         async with httpx.AsyncClient(timeout=600) as client:
             async with client.stream("POST", CODEX_URL, headers=self._headers(), json=self._body(input_msgs, system)) as res:
-                res.raise_for_status()
+                if res.status_code >= 400:
+                    raise codex_error(res.status_code, await res.aread())
                 async for line in res.aiter_lines():
                     if not line.startswith("data: "):
                         continue

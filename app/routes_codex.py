@@ -80,6 +80,8 @@ async def exchange(body: ExchangeBody):
         "refresh_token": data["refresh_token"],
         "expires": int(time.time() + data["expires_in"]),
     }
+    if data.get("id_token"):
+        tokens["id_token"] = data["id_token"]
     encoded = json.dumps(tokens)
 
     existing = next((p for p in store.list_providers() if p["provider_type"] == "codex"), None)
