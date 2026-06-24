@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-const state = { case: null, votes: {}, batchPoll: null, activeBatchId: null };
+const state = { case: null, votes: {}, batchPoll: null, batchTimer: null, activeBatchId: null, activeBatch: null };
 
 async function api(url, options = {}) {
   const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -82,7 +82,7 @@ function wrapFirstMatch(root, needle, item) {
     const pin = document.createElement('button');
     pin.type = 'button';
     pin.className = 'anchor-pin';
-    pin.textContent = 'feedback';
+    pin.textContent = '?';
     pin.title = item.question;
     pin.addEventListener('click', () => focusFeedback(item.id));
     mark.insertAdjacentElement('afterend', pin);
@@ -134,24 +134,29 @@ function choicesForOption(item, option) {
   return localChoices.length ? localChoices : choices;
 }
 
+function choiceEffect(choice, option) {
+  const value = signal(choice, option);
+  if (value > 0) return { text: `+${value}`, cls: 'positive' };
+  if (value < 0) return { text: `${value}`, cls: 'negative' };
+  return { text: '0', cls: 'neutral' };
+}
+
 function feedbackCard(item, choices, option) {
   const answered = state.votes[item.id];
   return `
     <div class="inline-feedback-card ${answered ? 'answered' : ''}" data-feedback-item="${esc(item.id)}" data-option="${esc(option)}">
-      <div class="inline-feedback-meta row">
-        ${item.focus ? `<span class="badge">${esc(item.focus)}</span>` : ''}
-        ${item.kind ? `<span class="badge">${esc(item.kind)}</span>` : ''}
-        <span class="feedback-status">${answered ? 'answered' : 'needs feedback'}</span>
-      </div>
       <div class="inline-feedback-question">${esc(item.question)}</div>
       <div class="inline-choice-grid">
-        ${choices.map(choice => `
-          <button class="btn feedback-choice ${state.votes[item.id] === choice.id ? 'primary' : ''}" data-item-id="${esc(item.id)}" data-choice-id="${esc(choice.id)}">
-            ${esc(choice.label)}
-          </button>
-        `).join('')}
+        ${choices.map(choice => {
+          const effect = choiceEffect(choice, option);
+          return `
+            <button class="btn feedback-choice ${state.votes[item.id] === choice.id ? 'primary' : ''}" data-item-id="${esc(item.id)}" data-choice-id="${esc(choice.id)}">
+              <span>${esc(choice.label)}</span>
+              <span class="choice-effect ${effect.cls}">${esc(effect.text)}</span>
+            </button>
+          `;
+        }).join('')}
       </div>
-      ${item.why_ask ? `<div class="inline-feedback-why">${esc(item.why_ask)}</div>` : ''}
     </div>
   `;
 }
@@ -319,33 +324,64 @@ async function skipCase() {
   }
 }
 
+function parseDbTime(value) {
+  if (!value) return null;
+  return new Date(`${String(value).replace(' ', 'T')}Z`);
+}
+
+function elapsedText(value) {
+  const start = parseDbTime(value);
+  if (!start || Number.isNaN(start.getTime())) return '';
+  const seconds = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return mins ? `${mins}m ${secs}s` : `${secs}s`;
+}
+
 function stopBatchPolling() {
   if (state.batchPoll) clearInterval(state.batchPoll);
+  if (state.batchTimer) clearInterval(state.batchTimer);
   state.batchPoll = null;
+  state.batchTimer = null;
   state.activeBatchId = null;
+  state.activeBatch = null;
+}
+
+function updateGenerationTimer() {
+  if (!state.activeBatch || state.activeBatch.status !== 'running') return;
+  const created = state.activeBatch.created_cases || 0;
+  const target = state.activeBatch.target_count || 1;
+  const elapsed = elapsedText(state.activeBatch.created_at);
+  $('generate-status').textContent = `Generating ${created} / ${target} test · ${elapsed} elapsed. Safe to refresh.`;
 }
 
 function renderBatchProgress(batch) {
+  state.activeBatch = batch;
   if (!batch) {
     $('generate').disabled = false;
-    $('generate').textContent = 'Generate 5 blind tests';
+    $('generate').textContent = 'Generate blind test';
+    show('stop-generation', false);
     if (!$('generate-status').textContent.includes('failed')) $('generate-status').textContent = '';
     return;
   }
   const created = batch.created_cases || 0;
-  const target = batch.target_count || 5;
+  const target = batch.target_count || 1;
   if (batch.status === 'running') {
     $('generate').disabled = true;
     $('generate').textContent = 'Generating…';
-    $('generate-status').textContent = `Generating ${created} / ${target} blind tests. Safe to refresh — progress is saved.`;
+    show('stop-generation', true);
+    updateGenerationTimer();
     return;
   }
   $('generate').disabled = false;
-  $('generate').textContent = 'Generate 5 blind tests';
+  $('generate').textContent = 'Generate blind test';
+  show('stop-generation', false);
   if (batch.status === 'failed') {
-    $('generate-status').textContent = batch.error || 'Batch generation failed.';
+    $('generate-status').textContent = batch.error || 'Generation failed.';
+  } else if (batch.status === 'stopped') {
+    $('generate-status').textContent = `Generation stopped after ${elapsedText(batch.created_at)}.`;
   } else {
-    $('generate-status').textContent = `Batch ready: ${created} / ${target} tests generated.`;
+    $('generate-status').textContent = `Test ready: ${created} / ${target} generated in ${elapsedText(batch.created_at)}.`;
   }
 }
 
@@ -365,11 +401,13 @@ function startBatchPolling(batch) {
   state.activeBatchId = batch.id;
   renderBatchProgress(batch);
   if (batch.status !== 'running') return;
+  state.batchTimer = setInterval(updateGenerationTimer, 1000);
   state.batchPoll = setInterval(() => {
     pollBatch(batch.id).catch(err => {
       stopBatchPolling();
       $('generate').disabled = false;
-      $('generate').textContent = 'Generate 5 blind tests';
+      $('generate').textContent = 'Generate blind test';
+      show('stop-generation', false);
       $('generate-status').textContent = err.message;
     });
   }, 2500);
@@ -394,11 +432,28 @@ async function generateBatch() {
   } catch (err) {
     $('generate-status').textContent = err.message;
     $('generate').disabled = false;
-    $('generate').textContent = 'Generate 5 blind tests';
+    $('generate').textContent = 'Generate blind test';
+  }
+}
+
+async function stopGeneration() {
+  if (!state.activeBatchId) return;
+  $('stop-generation').disabled = true;
+  $('generate-status').textContent = 'Stopping generation…';
+  try {
+    const { batch } = await api(`/api/evals/batch/${state.activeBatchId}/stop`, { method: 'POST' });
+    stopBatchPolling();
+    renderBatchProgress(batch);
+    await loadStatsBadge();
+  } catch (err) {
+    $('generate-status').textContent = err.message;
+  } finally {
+    $('stop-generation').disabled = false;
   }
 }
 
 $('generate').addEventListener('click', generateBatch);
+$('stop-generation').addEventListener('click', stopGeneration);
 $('skip-case').addEventListener('click', skipCase);
 $('submit-vote').addEventListener('click', submitVote);
 $('next').addEventListener('click', loadNext);

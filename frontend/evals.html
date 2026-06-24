@@ -18,7 +18,7 @@
     </nav>
 
     <section class="hero compact">
-      <span class="badge">blind feedback · batches of 5</span>
+      <span class="badge">blind feedback · one at a time</span>
       <h1>Give feedback while reading. Reveal after.</h1>
       <p>The LLM scans each pair of outputs and asks case-specific questions about how they responded, including sentence-level annotations.</p>
     </section>
@@ -29,9 +29,10 @@
           <h2 style="margin:0">Batch</h2>
           <span id="pending-count" class="badge">loading…</span>
         </div>
-        <p class="muted">No setup. Each test auto-picks a mold, blinds the arms, and generates feedback prompts from the actual outputs.</p>
+        <p class="muted">Generate one blind test at a time. Runs in the background, shows a timer, and can be stopped.</p>
         <div class="actions">
-          <button id="generate" class="btn primary">Generate 5 blind tests</button>
+          <button id="stop-generation" class="btn danger hidden">Stop generation</button>
+          <button id="generate" class="btn primary">Generate blind test</button>
         </div>
         <div id="generate-status" class="muted"></div>
       </section>
@@ -39,7 +40,7 @@
       <section class="stack">
         <div id="empty" class="card hidden">
           <h2>No pending tests</h2>
-          <p class="muted">Generate a batch of 5 to start voting.</p>
+          <p class="muted">Generate a blind test to start voting.</p>
         </div>
 
         <div id="case-card" class="card hidden">

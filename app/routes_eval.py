@@ -15,8 +15,9 @@ from app.llm import build_chain_llm
 from app.routes_agent import DEFAULT_PROMPT, RunRequest, extract_text, run_mold_arm, run_simple_arm
 
 router = APIRouter()
-BATCH_SIZE = 5
-RUNNING_BATCH_TASKS: set[asyncio.Task] = set()
+GENERATION_COUNT = 1
+SAMPLE_CONTEXT_COUNT = 5
+RUNNING_BATCH_TASKS: dict[str, asyncio.Task] = {}
 
 
 class BatchCreate(BaseModel):
@@ -56,7 +57,7 @@ async def ask_json(llm, system: str, user: str):
 
 
 async def ensure_samples(llm):
-    missing = max(0, BATCH_SIZE - eval_store.sample_count())
+    missing = max(0, SAMPLE_CONTEXT_COUNT - eval_store.sample_count())
     if not missing:
         return
     data = await ask_json(
@@ -187,7 +188,7 @@ def normalize_feedback_items(raw: Any):
 async def generate_feedback_items(llm, system_prompt: str, user_message: str, option_a: str, option_b: str):
     data = await ask_json(
         llm,
-        "You generate precise human feedback prompts for blind AI-response evaluation. Output JSON only.",
+        "You generate short diagnostic point-vote prompts for blind AI-response evaluation. Output JSON only.",
         f"""
 System prompt:
 {system_prompt}
@@ -201,23 +202,26 @@ Option A:
 Option B:
 {option_b}
 
-Read the actual wording of both options and generate 5 to 8 feedback items about how each response responds.
-Do not grade whether the answer's facts are correct, whether it solved the user's task, or which answer you generally prefer.
-Ask about observable response behavior: judgment, concision, depth, originality, specificity, framing, care, tone, or other qualities you notice in these exact outputs.
-Those qualities are examples, not a checklist. The items must be discovered from the outputs, not copied from a generic rubric.
+Read the actual wording of both options and generate 5 to 8 short diagnostic point checks.
+This is not a taste rubric. Do not ask whether wording is vivid, immersive, beautiful, stylish, or preferable.
+The goal is to catch objective-ish AI response signals that add or deduct points: unnecessary verbosity, generic slop, unsupported invention/hallucination, contradiction, missed constraint, weak critical thinking, useful critical thinking, useful creativity, concrete specificity, fatigue-inducing phrasing, or other concrete signals visible in these outputs.
+Those are example dimensions, not templates. Discover the checks from these exact outputs.
 
 Include a natural mix of:
-- comparison items where a human chooses which option better demonstrates a response quality;
-- annotation items tied to an exact sentence or short phrase from one option, asking whether that wording is a good or bad signal.
+- comparison checks where a human can mark which option shows the signal;
+- annotation checks tied to an exact sentence or short phrase, asking if that phrase is useful, risky, unsupported, filler, too verbose, or otherwise point-worthy.
 
 Rules:
-- Every question and every choice label must be specific to this case.
+- Questions must be short: ideally 2 to 6 words, max 9 words.
+- Choice labels must be short: ideally 1 to 5 words, max 7 words.
+- Prefer objective checks over taste: "Unsupported detail?", "Too verbose?", "Generic filler?", "Useful inference?" are good shapes; "Which is more immersive?" is bad.
 - No reusable rubric wording, placeholders, or templates.
 - Do not mention hidden implementation details, models, tools, molds, or no-tool agents.
-- Prefer inline feedback: every item should include anchor_option "A" or "B" and anchor_text copied exactly from that option whenever possible. For comparison items, anchor the question to the sentence or phrase that made you notice the quality.
-- For annotation items, anchor_option must be "A" or "B" and anchor_text must be an exact substring copied from that option, preferably 3 to 25 words.
-- For each choice, include numeric signals with keys A and B. Positive means a good signal for that option; negative means a bad signal. Use 0 for unaffected options.
-- Use compact choice labels that describe the human feedback, not just "yes" or "no" unless those words are genuinely enough.
+- Prefer inline feedback: every item should include anchor_option "A" or "B" and anchor_text copied exactly from that option whenever possible. For comparison items, anchor the check to the sentence or phrase that made you notice the signal.
+- For annotation items, anchor_option must be "A" or "B" and anchor_text must be an exact substring copied from that option, preferably 3 to 18 words.
+- For each choice, include numeric signals with keys A and B. Positive adds points for that option; negative deducts points for that option. Use 0 for unaffected options.
+- Include both positive and negative checks when the outputs warrant it.
+- Keep why_ask empty or under 6 words.
 
 Output exactly this JSON shape:
 {{
@@ -230,7 +234,7 @@ Output exactly this JSON shape:
       "target": "both, A, or B",
       "anchor_option": null,
       "anchor_text": "",
-      "why_ask": "why this is a useful signal",
+      "why_ask": "optional short note",
       "choices": [
         {{"id": "choice-id", "label": "generated choice label", "signals": {{"A": 1, "B": 0}}}}
       ]
@@ -379,7 +383,7 @@ def public_case(case: dict[str, Any] | None, reveal: bool = False):
 
 async def build_case(batch_id: str, requested_mold_name: str | None, generator_llm):
     mold_name = requested_mold_name or random.choice(list(AVAILABLE_MOLDS))
-    samples = eval_store.random_samples(BATCH_SIZE)
+    samples = eval_store.random_samples(SAMPLE_CONTEXT_COUNT)
     pair = await generate_pair(generator_llm, samples)
     eval_store.create_sample(pair["system_prompt"], pair["user_message"], "case")
 
@@ -424,7 +428,7 @@ def public_batch(batch: dict[str, Any] | None):
     if not batch:
         return None
     progress = eval_store.batch_progress(batch["id"]) or batch
-    target = progress.get("target_count") or BATCH_SIZE
+    target = progress.get("target_count") or GENERATION_COUNT
     created = progress.get("created_cases") or 0
     return {
         "id": progress["id"],
@@ -447,21 +451,24 @@ async def generate_batch_cases(batch_id: str, requested_mold_name: str | None):
         if not generator_llm:
             raise ValueError("Configure at least one model in Settings first")
         await ensure_samples(generator_llm)
-        if eval_store.sample_count() < BATCH_SIZE:
+        if eval_store.sample_count() < SAMPLE_CONTEXT_COUNT:
             raise ValueError("Could not bootstrap enough eval samples; try again")
         progress = eval_store.batch_progress(batch_id)
         existing = progress.get("created_cases") if progress else 0
-        for _ in range(max(0, BATCH_SIZE - (existing or 0))):
+        for _ in range(max(0, GENERATION_COUNT - (existing or 0))):
             await build_case(batch_id, requested_mold_name, generator_llm)
         eval_store.finish_batch(batch_id)
+    except asyncio.CancelledError:
+        eval_store.finish_batch(batch_id, "stopped", "Stopped by user")
+        raise
     except Exception as exc:
         eval_store.finish_batch(batch_id, "failed", str(exc))
 
 
 def schedule_batch_generation(batch_id: str, requested_mold_name: str | None):
     task = asyncio.create_task(generate_batch_cases(batch_id, requested_mold_name))
-    RUNNING_BATCH_TASKS.add(task)
-    task.add_done_callback(RUNNING_BATCH_TASKS.discard)
+    RUNNING_BATCH_TASKS[batch_id] = task
+    task.add_done_callback(lambda _: RUNNING_BATCH_TASKS.pop(batch_id, None))
 
 
 @router.post("/batch")
@@ -473,7 +480,7 @@ async def create_batch(body: BatchCreate):
         return {"batch": public_batch(active)}
     if not build_chain_llm():
         raise HTTPException(status_code=400, detail="Configure at least one model in Settings first")
-    batch_id = eval_store.create_batch(body.mold_name or "auto", BATCH_SIZE)
+    batch_id = eval_store.create_batch(body.mold_name or "auto", GENERATION_COUNT)
     schedule_batch_generation(batch_id, body.mold_name)
     return {"batch": public_batch(eval_store.get_batch(batch_id))}
 
@@ -489,6 +496,19 @@ def batch_status(batch_id: str):
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
     return {"batch": public_batch(batch)}
+
+
+@router.post("/batch/{batch_id}/stop")
+def stop_batch(batch_id: str):
+    batch = eval_store.get_batch(batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Generation not found")
+    if batch.get("status") == "running":
+        task = RUNNING_BATCH_TASKS.get(batch_id)
+        if task and not task.done():
+            task.cancel()
+        eval_store.finish_batch(batch_id, "stopped", "Stopped by user")
+    return {"batch": public_batch(eval_store.get_batch(batch_id))}
 
 
 @router.get("/next")
@@ -607,7 +627,7 @@ def delete_eval_votes():
 def delete_eval_data():
     active = eval_store.active_batch()
     if active:
-        raise HTTPException(status_code=409, detail="A batch is still generating. Wait for it to finish before deleting eval data.")
+        raise HTTPException(status_code=409, detail="A test is still generating. Stop it or wait for it to finish before deleting eval data.")
     eval_store.clear_eval_data()
     return eval_stats()
 

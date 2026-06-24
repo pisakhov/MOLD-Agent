@@ -55,7 +55,7 @@ def fail_stale_batches(hours: int = 2):
         conn.execute(
             """
             UPDATE eval_batches
-            SET status = 'failed', error = 'Batch generation stopped before finishing.', finished_at = CURRENT_TIMESTAMP
+            SET status = 'failed', error = 'Generation stopped before finishing.', finished_at = CURRENT_TIMESTAMP
             WHERE status = 'running' AND created_at < datetime('now', ?)
             """,
             (f"-{hours} hours",),
