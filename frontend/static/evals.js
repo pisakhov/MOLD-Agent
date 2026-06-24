@@ -20,8 +20,17 @@ function markdownHtml(value) {
   return window.DOMPurify.sanitize(window.marked.parse(text));
 }
 
+function show(id, on = true) {
+  const el = $(id);
+  if (el) el.classList.toggle('hidden', !on);
+}
+
 function feedbackItems() {
-  return state.case?.feedback_items || state.case?.rubric || [];
+  return (state.case?.feedback_items || state.case?.rubric || []).map((item, i) => ({ ...item, id: item.id || `q${i + 1}` }));
+}
+
+function itemById(id) {
+  return feedbackItems().find(item => item.id === id);
 }
 
 function pulse(el) {
@@ -43,6 +52,16 @@ function focusAnchor(itemId) {
   pulse(mark);
 }
 
+function insertAnchorSlot(root, mark, item) {
+  const slot = document.createElement('div');
+  slot.className = 'inline-feedback-slot';
+  slot.dataset.slotItem = item.id;
+  slot.dataset.option = item.anchor_option;
+  const block = mark.closest('p, li, blockquote, pre, h1, h2, h3, h4, h5, h6') || mark.parentElement;
+  if (block && block !== root && root.contains(block)) block.insertAdjacentElement('afterend', slot);
+  else root.appendChild(slot);
+}
+
 function wrapFirstMatch(root, needle, item) {
   if (!needle || needle.length < 2) return false;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -59,6 +78,16 @@ function wrapFirstMatch(root, needle, item) {
     mark.title = item.question;
     mark.addEventListener('click', () => focusFeedback(item.id));
     range.surroundContents(mark);
+
+    const pin = document.createElement('button');
+    pin.type = 'button';
+    pin.className = 'anchor-pin';
+    pin.textContent = 'feedback';
+    pin.title = item.question;
+    pin.addEventListener('click', () => focusFeedback(item.id));
+    mark.insertAdjacentElement('afterend', pin);
+
+    insertAnchorSlot(root, mark, item);
     return true;
   }
   return false;
@@ -78,88 +107,144 @@ function renderMarkdown(id, value, option) {
   applyAnchors(id, option);
 }
 
+function signal(choice, option) {
+  return Number(choice?.signals?.[option] || 0);
+}
+
+function targetOptions(item) {
+  const target = String(item.target || '').toUpperCase();
+  if (target === 'A' || target === 'B') return [target];
+  if (item.anchor_option === 'A' || item.anchor_option === 'B') return [item.anchor_option];
+  return ['A', 'B'];
+}
+
+function choicesForOption(item, option) {
+  const choices = item.choices || [];
+  const targets = targetOptions(item);
+  if (!targets.includes(option)) return [];
+  if (targets.length === 1) return choices;
+  const other = option === 'A' ? 'B' : 'A';
+  const localChoices = choices.filter(choice => {
+    const own = signal(choice, option);
+    const otherSignal = signal(choice, other);
+    if (own === 0 && otherSignal === 0) return true;
+    if (own === otherSignal && own !== 0) return true;
+    return own > otherSignal;
+  });
+  return localChoices.length ? localChoices : choices;
+}
+
+function feedbackCard(item, choices, option) {
+  const answered = state.votes[item.id];
+  return `
+    <div class="inline-feedback-card ${answered ? 'answered' : ''}" data-feedback-item="${esc(item.id)}" data-option="${esc(option)}">
+      <div class="inline-feedback-meta row">
+        ${item.focus ? `<span class="badge">${esc(item.focus)}</span>` : ''}
+        ${item.kind ? `<span class="badge">${esc(item.kind)}</span>` : ''}
+        <span class="feedback-status">${answered ? 'answered' : 'needs feedback'}</span>
+      </div>
+      <div class="inline-feedback-question">${esc(item.question)}</div>
+      <div class="inline-choice-grid">
+        ${choices.map(choice => `
+          <button class="btn feedback-choice ${state.votes[item.id] === choice.id ? 'primary' : ''}" data-item-id="${esc(item.id)}" data-choice-id="${esc(choice.id)}">
+            ${esc(choice.label)}
+          </button>
+        `).join('')}
+      </div>
+      ${item.why_ask ? `<div class="inline-feedback-why">${esc(item.why_ask)}</div>` : ''}
+    </div>
+  `;
+}
+
+function findSlot(itemId, option) {
+  return [...document.querySelectorAll('[data-slot-item]')].find(slot => slot.dataset.slotItem === itemId && slot.dataset.option === option);
+}
+
+function ensureFlowSlot(option, item) {
+  const existing = findSlot(item.id, option);
+  if (existing) return existing;
+  const root = option === 'A' ? $('option-a') : $('option-b');
+  const slot = document.createElement('div');
+  slot.className = 'inline-feedback-slot flow-feedback-slot';
+  slot.dataset.slotItem = item.id;
+  slot.dataset.option = option;
+  const blocks = [...root.children].filter(el => !el.classList.contains('inline-feedback-slot'));
+  const slotCount = root.querySelectorAll('.flow-feedback-slot').length;
+  const anchor = blocks[Math.min(slotCount, Math.max(0, blocks.length - 1))];
+  if (anchor) anchor.insertAdjacentElement('afterend', slot);
+  else root.appendChild(slot);
+  return slot;
+}
+
+function renderInlineFeedback() {
+  const items = feedbackItems();
+  const rendered = new Set();
+  document.querySelectorAll('.inline-feedback-slot').forEach(slot => { slot.innerHTML = ''; });
+
+  document.querySelectorAll('[data-slot-item]').forEach(slot => {
+    const item = itemById(slot.dataset.slotItem);
+    if (!item) return;
+    const option = slot.dataset.option;
+    const choices = choicesForOption(item, option);
+    if (!choices.length) return;
+    slot.innerHTML = feedbackCard(item, choices, option);
+    rendered.add(`${item.id}:${option}`);
+  });
+
+  items.forEach(item => {
+    ['A', 'B'].forEach(option => {
+      const choices = choicesForOption(item, option);
+      if (!choices.length || rendered.has(`${item.id}:${option}`)) return;
+      const slot = ensureFlowSlot(option, item);
+      slot.innerHTML = feedbackCard(item, choices, option);
+      rendered.add(`${item.id}:${option}`);
+    });
+  });
+
+  document.querySelectorAll('[data-choice-id]').forEach(btn => btn.addEventListener('click', () => {
+    state.votes[btn.dataset.itemId] = btn.dataset.choiceId;
+    renderInlineFeedback();
+  }));
+  updateVoteProgress();
+}
+
+function updateVoteProgress() {
+  const items = feedbackItems();
+  const count = items.filter(item => state.votes[item.id]).length;
+  $('vote-score').textContent = `${count} / ${items.length} answered`;
+  $('submit-vote').disabled = Boolean(state.case?.voted) || !items.length || count !== items.length;
+}
+
+function resetVote() {
+  state.votes = {};
+  updateVoteProgress();
+}
+
 async function loadStatsBadge() {
   const data = await api('/api/evals/stats');
   const pending = data.summary.pending_cases || 0;
   $('pending-count').textContent = `${pending} pending`;
 }
 
-function show(id, on = true) {
-  $(id).classList.toggle('hidden', !on);
-}
-
-function resetVote() {
-  state.votes = {};
-  $('submit-vote').disabled = true;
-}
-
 async function loadNext() {
-  resetVote();
   await loadStatsBadge();
   const { case: item } = await api('/api/evals/next');
   state.case = item;
+  resetVote();
   show('reveal-card', false);
   if (!item) {
     show('empty', true);
     show('case-card', false);
-    show('rubric-card', false);
     return;
   }
   show('empty', false);
   show('case-card', true);
-  show('rubric-card', true);
   $('case-id').textContent = item.id.slice(0, 8);
   $('system-prompt').textContent = item.system_prompt;
   $('user-message').textContent = item.user_message;
-  renderFeedback();
   renderMarkdown('option-a', item.option_a_answer, 'A');
   renderMarkdown('option-b', item.option_b_answer, 'B');
-}
-
-function anchorLine(item) {
-  if (!item.anchor_option || !item.anchor_text) return '';
-  return `
-    <button class="quote-jump" data-jump="${esc(item.id)}">
-      <span class="badge">Option ${esc(item.anchor_option)} quote</span>
-      “${esc(item.anchor_text)}”
-    </button>
-  `;
-}
-
-function renderFeedback() {
-  const items = feedbackItems();
-  $('vote-score').textContent = `${Object.keys(state.votes).length} / ${items.length}`;
-  $('rubric').innerHTML = items.map((item, i) => {
-    const itemId = item.id || `q${i + 1}`;
-    const choices = item.choices || [];
-    return `
-      <div class="criterion feedback-item" data-feedback-item="${esc(itemId)}">
-        <div class="criterion-text">
-          <div class="row" style="margin-bottom:8px">
-            ${item.focus ? `<span class="badge">${esc(item.focus)}</span>` : ''}
-            ${item.kind ? `<span class="badge">${esc(item.kind)}</span>` : ''}
-          </div>
-          <strong>${esc(item.question)}</strong>
-          ${anchorLine({ ...item, id: itemId })}
-          ${item.why_ask ? `<div class="muted" style="margin-top:8px">${esc(item.why_ask)}</div>` : ''}
-        </div>
-        <div class="criterion-actions vertical">
-          ${choices.map(choice => `
-            <button class="btn feedback-choice ${state.votes[itemId] === choice.id ? 'primary' : ''}" data-item-id="${esc(itemId)}" data-choice-id="${esc(choice.id)}">
-              ${esc(choice.label)}
-            </button>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  $('rubric').querySelectorAll('[data-choice-id]').forEach(btn => btn.addEventListener('click', () => {
-    state.votes[btn.dataset.itemId] = btn.dataset.choiceId;
-    $('submit-vote').disabled = Object.keys(state.votes).length !== items.length;
-    renderFeedback();
-  }));
-  $('rubric').querySelectorAll('[data-jump]').forEach(btn => btn.addEventListener('click', () => focusAnchor(btn.dataset.jump)));
+  renderInlineFeedback();
 }
 
 function kindLabel(kind) {
@@ -173,8 +258,7 @@ function scoreText(scores = {}) {
 }
 
 function selectedChoice(item) {
-  const itemId = item.id;
-  const choiceId = state.case?.feedback_votes?.[itemId];
+  const choiceId = state.case?.feedback_votes?.[item.id];
   return (item.choices || []).find(choice => choice.id === choiceId);
 }
 
@@ -201,7 +285,7 @@ function renderReveal(item) {
 }
 
 async function submitVote() {
-  if (!state.case) return;
+  if (!state.case || state.case.voted) return;
   $('submit-vote').disabled = true;
   try {
     const { case: item } = await api(`/api/evals/cases/${state.case.id}/vote`, {
@@ -209,18 +293,20 @@ async function submitVote() {
       body: JSON.stringify({ feedback_votes: state.votes }),
     });
     state.case = item;
+    state.votes = item.feedback_votes || state.votes;
+    renderInlineFeedback();
     await loadStatsBadge();
     renderReveal(item);
   } catch (err) {
     alert(err.message);
-    $('submit-vote').disabled = false;
+    updateVoteProgress();
   }
 }
 
 async function generateBatch() {
   $('generate').disabled = true;
   $('generate').textContent = 'Generating…';
-  $('generate-status').textContent = 'Creating 5 blind tests and LLM-scanned feedback prompts. This can take a few minutes.';
+  $('generate-status').textContent = 'Creating 5 blind tests and inline feedback prompts. This can take a few minutes.';
   try {
     await api('/api/evals/batch', {
       method: 'POST',

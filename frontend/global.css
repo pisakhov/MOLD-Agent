@@ -73,8 +73,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 .criterion-actions.vertical { flex-direction: column; align-items: stretch; min-width: 220px; }
 .feedback-choice { text-align: left; white-space: normal; line-height: 1.35; }
 .feedback-anchor { background: rgba(139, 92, 246, .22); color: var(--text); border: 1px solid rgba(139, 92, 246, .45); border-radius: 6px; padding: 0 3px; cursor: pointer; }
-.quote-jump { width: 100%; margin-top: 10px; text-align: left; border: 1px solid var(--line); background: #0d0d10; color: var(--text); border-radius: 12px; padding: 10px; line-height: 1.45; }
-.quote-jump .badge { margin-right: 6px; }
+.anchor-pin { margin-left: 5px; border: 1px solid rgba(139, 92, 246, .45); background: rgba(139, 92, 246, .14); color: var(--text); border-radius: 999px; padding: 1px 6px; font-size: 10px; vertical-align: middle; }
+.inline-feedback { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.inline-feedback:empty { display: none; }
+.inline-feedback-slot { margin: 10px 0 16px; }
+.inline-feedback-card { border: 1px solid rgba(139, 92, 246, .34); background: linear-gradient(180deg, rgba(139, 92, 246, .12), rgba(24, 24, 27, .82)); border-radius: 14px; padding: 12px; box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
+.inline-feedback-card.answered { border-color: rgba(250, 250, 250, .42); background: linear-gradient(180deg, rgba(250, 250, 250, .08), rgba(24, 24, 27, .82)); }
+.inline-feedback-meta { justify-content: space-between; margin-bottom: 8px; }
+.feedback-status { margin-left: auto; color: var(--muted); font-size: 12px; }
+.inline-feedback-question { font-weight: 650; line-height: 1.4; letter-spacing: -0.02em; }
+.inline-choice-grid { display: grid; gap: 8px; margin-top: 10px; }
+.inline-feedback-card .feedback-choice { width: 100%; background: #0d0d10; }
+.inline-feedback-card .feedback-choice.primary { background: var(--primary); color: var(--primary-text); }
+.inline-feedback-why { color: var(--muted); font-size: 12px; line-height: 1.4; margin-top: 9px; }
 .pulse { animation: pulse-ring .9s ease; }
 @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, .55); } 100% { box-shadow: 0 0 0 12px rgba(139, 92, 246, 0); } }
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }

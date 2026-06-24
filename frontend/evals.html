@@ -45,7 +45,11 @@
         <div id="case-card" class="card hidden">
           <div class="row" style="justify-content: space-between">
             <h2 style="margin:0">Blind test</h2>
-            <span id="case-id" class="badge"></span>
+            <div class="row">
+              <span id="vote-score" class="badge">0 / 0 answered</span>
+              <button id="submit-vote" class="btn primary" disabled>Submit feedback</button>
+              <span id="case-id" class="badge"></span>
+            </div>
           </div>
           <div class="prompt-box">
             <div><strong>System prompt</strong><p id="system-prompt" class="muted"></p></div>
@@ -61,17 +65,6 @@
               <div class="row" style="justify-content: space-between"><h3>Option B</h3><span class="badge">blind</span></div>
               <div id="option-b" class="output"></div>
             </div>
-          </div>
-        </div>
-
-        <div id="rubric-card" class="card hidden">
-          <div class="row" style="justify-content: space-between">
-            <h2 style="margin:0">Response feedback</h2>
-            <span id="vote-score" class="badge">0 / 0</span>
-          </div>
-          <div id="rubric" class="stack" style="margin-top:14px"></div>
-          <div class="actions">
-            <button id="submit-vote" class="btn primary" disabled>Submit feedback</button>
           </div>
         </div>
 

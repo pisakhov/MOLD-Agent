@@ -213,6 +213,7 @@ Rules:
 - Every question and every choice label must be specific to this case.
 - No reusable rubric wording, placeholders, or templates.
 - Do not mention hidden implementation details, models, tools, molds, or no-tool agents.
+- Prefer inline feedback: every item should include anchor_option "A" or "B" and anchor_text copied exactly from that option whenever possible. For comparison items, anchor the question to the sentence or phrase that made you notice the quality.
 - For annotation items, anchor_option must be "A" or "B" and anchor_text must be an exact substring copied from that option, preferably 3 to 25 words.
 - For each choice, include numeric signals with keys A and B. Positive means a good signal for that option; negative means a bad signal. Use 0 for unaffected options.
 - Use compact choice labels that describe the human feedback, not just "yes" or "no" unless those words are genuinely enough.
